@@ -1,6 +1,6 @@
 GO = go
 GOFLAGS =
-INSTALLDIR = "$(APPDATA)\Elgato\StreamDeck\Plugins\dev.samwho.streamdeck.counter.sdPlugin"
+INSTALLDIR = "$(APPDATA)\Elgato\StreamDeck\Plugins\dev.flowingspdg.streamdeck.counter.sdPlugin"
 
 .PHONY: test install build logs
 

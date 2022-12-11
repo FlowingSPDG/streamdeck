@@ -63,13 +63,14 @@ func NewClient(ctx context.Context, params RegistrationParams) *Client {
 
 // Action Get action from uuid.
 func (client *Client) Action(uuid string) *Action {
-	val, ok := client.actions.m.LoadOrStore(uuid, newAction(uuid))
-	var v *Action
+	v := newAction(uuid)
+	val, ok := client.actions.m.LoadOrStore(uuid, v)
 	if !ok {
 		v = newAction(uuid)
 		client.actions.m.Store(uuid, v)
+	} else {
+		v = val.(*Action)
 	}
-	v = val.(*Action)
 	return v
 }
 

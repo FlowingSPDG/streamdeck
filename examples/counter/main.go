@@ -29,7 +29,7 @@ func main() {
 
 	ctx := context.Background()
 	if err := run(ctx); err != nil {
-		log.Fatalf("%v\n", err)
+		panic(err)
 	}
 }
 
@@ -49,22 +49,18 @@ func setup(client *streamdeck.Client) {
 	action := client.Action("dev.samwho.streamdeck.counter")
 	// This is not goroutine safe
 	// Use sync.Map instead for goroutine safe map
-	settings := make(map[string]*Settings)
+	settings := make(map[string]Settings)
 
 	action.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		p := streamdeck.WillAppearPayload{}
+		p := streamdeck.WillAppearPayload[Settings]{}
 		if err := json.Unmarshal(event.Payload, &p); err != nil {
 			return err
 		}
 
 		s, ok := settings[event.Context]
 		if !ok {
-			s = &Settings{}
+			s = Settings{}
 			settings[event.Context] = s
-		}
-
-		if err := json.Unmarshal(p.Settings, s); err != nil {
-			return err
 		}
 
 		bg, err := streamdeck.Image(background())

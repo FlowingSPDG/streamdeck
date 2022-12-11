@@ -1,7 +1,5 @@
 package streamdeck
 
-import "encoding/json"
-
 // LogMessagePayload A string to write to the logs file.
 type LogMessagePayload struct {
 	Message string `json:"message"`
@@ -37,10 +35,10 @@ type SwitchProfilePayload struct {
 }
 
 // DidReceiveSettingsPayload This json object contains persistently stored data.
-type DidReceiveSettingsPayload struct {
-	Settings        json.RawMessage `json:"settings,omitempty"`
-	Coordinates     Coordinates     `json:"coordinates,omitempty"`
-	IsInMultiAction bool            `json:"isInMultiAction,omitempty"`
+type DidReceiveSettingsPayload[T any] struct {
+	Settings        PropertyInspector[T] `json:"settings,omitempty"`
+	Coordinates     Coordinates          `json:"coordinates,omitempty"`
+	IsInMultiAction bool                 `json:"isInMultiAction,omitempty"`
 }
 
 // Coordinates The coordinates of the action triggered.
@@ -50,51 +48,51 @@ type Coordinates struct {
 }
 
 // DidReceiveGlobalSettingsPayload This json object contains persistently stored data.
-type DidReceiveGlobalSettingsPayload struct {
-	Settings json.RawMessage `json:"settings,omitempty"`
+type DidReceiveGlobalSettingsPayload[T any] struct {
+	Settings T `json:"settings,omitempty"`
 }
 
 // KeyDownPayload A json object
-type KeyDownPayload struct {
-	Settings         json.RawMessage `json:"settings,omitempty"`
-	Coordinates      Coordinates     `json:"coordinates,omitempty"`
-	State            int             `json:"state,omitempty"`
-	UserDesiredState int             `json:"userDesiredState,omitempty"`
-	IsInMultiAction  bool            `json:"isInMultiAction,omitempty"`
+type KeyDownPayload[T any] struct {
+	Settings         PropertyInspector[T] `json:"settings,omitempty"`
+	Coordinates      Coordinates          `json:"coordinates,omitempty"`
+	State            int                  `json:"state,omitempty"`
+	UserDesiredState int                  `json:"userDesiredState,omitempty"`
+	IsInMultiAction  bool                 `json:"isInMultiAction,omitempty"`
 }
 
 // KeyUpPayload A json object
-type KeyUpPayload struct {
-	Settings         json.RawMessage `json:"settings,omitempty"`
-	Coordinates      Coordinates     `json:"coordinates,omitempty"`
-	State            int             `json:"state,omitempty"`
-	UserDesiredState int             `json:"userDesiredState,omitempty"`
-	IsInMultiAction  bool            `json:"isInMultiAction,omitempty"`
+type KeyUpPayload[T any] struct {
+	Settings         PropertyInspector[T] `json:"settings,omitempty"`
+	Coordinates      Coordinates          `json:"coordinates,omitempty"`
+	State            int                  `json:"state,omitempty"`
+	UserDesiredState int                  `json:"userDesiredState,omitempty"`
+	IsInMultiAction  bool                 `json:"isInMultiAction,omitempty"`
 }
 
 // WillAppearPayload A json object
-type WillAppearPayload struct {
-	Settings        json.RawMessage `json:"settings,omitempty"`
-	Coordinates     Coordinates     `json:"coordinates,omitempty"`
-	State           int             `json:"state,omitempty"`
-	IsInMultiAction bool            `json:"isInMultiAction,omitempty"`
+type WillAppearPayload[T any] struct {
+	Settings        PropertyInspector[T] `json:"settings,omitempty"`
+	Coordinates     Coordinates          `json:"coordinates,omitempty"`
+	State           int                  `json:"state,omitempty"`
+	IsInMultiAction bool                 `json:"isInMultiAction,omitempty"`
 }
 
 // WillDisappearPayload A json object
-type WillDisappearPayload struct {
-	Settings        json.RawMessage `json:"settings,omitempty"`
-	Coordinates     Coordinates     `json:"coordinates,omitempty"`
-	State           int             `json:"state,omitempty"`
-	IsInMultiAction bool            `json:"isInMultiAction,omitempty"`
+type WillDisappearPayload[T any] struct {
+	Settings        PropertyInspector[T] `json:"settings,omitempty"`
+	Coordinates     Coordinates          `json:"coordinates,omitempty"`
+	State           int                  `json:"state,omitempty"`
+	IsInMultiAction bool                 `json:"isInMultiAction,omitempty"`
 }
 
 // TitleParametersDidChangePayload A json object
-type TitleParametersDidChangePayload struct {
-	Settings        json.RawMessage `json:"settings,omitempty"`
-	Coordinates     Coordinates     `json:"coordinates,omitempty"`
-	State           int             `json:"state,omitempty"`
-	Title           string          `json:"title,omitempty"`
-	TitleParameters TitleParameters `json:"titleParameters,omitempty"`
+type TitleParametersDidChangePayload[T any] struct {
+	Settings        PropertyInspector[T] `json:"settings,omitempty"`
+	Coordinates     Coordinates          `json:"coordinates,omitempty"`
+	State           int                  `json:"state,omitempty"`
+	Title           string               `json:"title,omitempty"`
+	TitleParameters TitleParameters      `json:"titleParameters,omitempty"`
 }
 
 // TitleParameters A json object
