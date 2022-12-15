@@ -139,6 +139,7 @@ func (client *Client) Run() error {
 					eh := v.(eventHandlerSlice)
 					eh.Execute(ctx, client, event)
 				}
+				return
 			}
 
 			var action *Action
@@ -149,7 +150,6 @@ func (client *Client) Run() error {
 			} else {
 				action = a.(*Action)
 			}
-
 			v, ok := action.handlers.m.Load(event.Event)
 			if ok {
 				eh := v.(eventHandlerSlice)
