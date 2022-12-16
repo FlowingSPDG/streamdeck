@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/url"
 	"os"
@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	logger = log.New(ioutil.Discard, "streamdeck", log.LstdFlags)
+	logger = log.New(io.Discard, "streamdeck", log.LstdFlags)
 )
 
 // Log Get logger
@@ -81,8 +81,10 @@ func (client *Client) RegisterNoActionHandler(eventName string, handler EventHan
 		eh:    []EventHandler{},
 	}
 
-	ehi, _ := client.handlers.m.LoadOrStore(eventName, eh)
-	eh = ehi.(eventHandlerSlice)
+	ehi, loaded := client.handlers.m.LoadOrStore(eventName, eh)
+	if loaded {
+		eh = ehi.(eventHandlerSlice)
+	}
 
 	eh.mutex.Lock()
 	defer eh.mutex.Unlock()
@@ -134,12 +136,12 @@ func (client *Client) Run() error {
 			ctx = sdcontext.WithAction(ctx, event.Action)
 
 			if event.Action == "" {
-				v, ok := client.handlers.m.Load(event.Action)
+				v, ok := client.handlers.m.Load(event.Event)
 				if ok {
 					eh := v.(eventHandlerSlice)
 					eh.Execute(ctx, client, event)
 				}
-				return
+				continue
 			}
 
 			var action *Action
@@ -188,7 +190,7 @@ func (client *Client) send(event Event) error {
 }
 
 // SetSettings Save data persistently for the action's instance.
-func (client *Client) SetSettings(ctx context.Context, settings interface{}) error {
+func (client *Client) SetSettings(ctx context.Context, settings any) error {
 	return client.send(NewEvent(ctx, SetSettings, settings))
 }
 
@@ -198,7 +200,7 @@ func (client *Client) GetSettings(ctx context.Context) error {
 }
 
 // SetGlobalSettings Save data securely and globally for the plugin.
-func (client *Client) SetGlobalSettings(ctx context.Context, settings interface{}) error {
+func (client *Client) SetGlobalSettings(ctx context.Context, settings any) error {
 	return client.send(NewEvent(ctx, SetGlobalSettings, settings))
 }
 
@@ -248,12 +250,12 @@ func (client *Client) SwitchToProfile(ctx context.Context, profile string) error
 }
 
 // SendToPropertyInspector Send a payload to the Property Inspector.
-func (client *Client) SendToPropertyInspector(ctx context.Context, payload interface{}) error {
+func (client *Client) SendToPropertyInspector(ctx context.Context, payload any) error {
 	return client.send(NewEvent(ctx, SendToPropertyInspector, payload))
 }
 
 // SendToPlugin Send a payload to the plugin.
-func (client *Client) SendToPlugin(ctx context.Context, payload interface{}) error {
+func (client *Client) SendToPlugin(ctx context.Context, payload any) error {
 	return client.send(NewEvent(ctx, SendToPlugin, payload))
 }
 

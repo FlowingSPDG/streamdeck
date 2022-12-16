@@ -85,7 +85,7 @@ func (action *Action) RegisterHandler(eventName string, handler EventHandler) {
 // Contexts get contexts
 func (action *Action) Contexts() []context.Context {
 	cs := make([]context.Context, 0) // 0 length/capacity
-	action.contexts.m.Range(func(key, value interface{}) bool {
+	action.contexts.m.Range(func(key, value any) bool {
 		v := value.(context.Context)
 		cs = append(cs, v)
 		return true

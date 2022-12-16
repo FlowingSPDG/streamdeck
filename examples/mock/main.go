@@ -37,27 +37,27 @@ func (m *mockServer) SendEvent(event streamdeck.Event) error {
 	return m.s.Broadcast(j)
 }
 
-func (m *mockServer) KeyDown(ctx context.Context, payload interface{}) error {
+func (m *mockServer) KeyDown(ctx context.Context, payload any) error {
 	ev := streamdeck.NewEvent(ctx, streamdeck.KeyDown, payload)
 	return m.SendEvent(ev)
 }
 
-func (m *mockServer) WillAppear(ctx context.Context, payload interface{}) error {
+func (m *mockServer) WillAppear(ctx context.Context, payload any) error {
 	ev := streamdeck.NewEvent(ctx, streamdeck.WillAppear, payload)
 	return m.SendEvent(ev)
 }
 
-func (m *mockServer) WillDisappear(ctx context.Context, payload interface{}) error {
+func (m *mockServer) WillDisappear(ctx context.Context, payload any) error {
 	ev := streamdeck.NewEvent(ctx, streamdeck.WillDisappear, payload)
 	return m.SendEvent(ev)
 }
 
-func (m *mockServer) KeyUp(ctx context.Context, payload interface{}) error {
+func (m *mockServer) KeyUp(ctx context.Context, payload any) error {
 	ev := streamdeck.NewEvent(ctx, streamdeck.KeyUp, payload)
 	return m.SendEvent(ev)
 }
 
-func (m *mockServer) SendToPlugin(ctx context.Context, payload interface{}) error {
+func (m *mockServer) SendToPlugin(ctx context.Context, payload any) error {
 	ev := streamdeck.NewEvent(ctx, streamdeck.SendToPlugin, payload)
 	return m.SendEvent(ev)
 }

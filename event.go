@@ -52,7 +52,7 @@ const (
 )
 
 // NewEvent Generate new event from specified name and payload. payload will be converted to JSON
-func NewEvent(ctx context.Context, name string, payload interface{}) Event {
+func NewEvent(ctx context.Context, name string, payload any) Event {
 	p, err := json.Marshal(payload)
 	if err != nil {
 		panic(err)

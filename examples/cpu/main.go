@@ -114,7 +114,7 @@ func setup(client *streamdeck.Client) {
 			}
 			readings[imgX-1] = r[0]
 
-			contexts.Range(func(key, value interface{}) bool {
+			contexts.Range(func(key, value any) bool {
 				ctxStr := value.(string)
 				ctx := context.Background()
 				ctx = sdcontext.WithContext(ctx, ctxStr)

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"io/ioutil"
-	"log"
 	"os"
 	"strconv"
 
@@ -19,14 +17,6 @@ type Settings struct {
 }
 
 func main() {
-	f, err := ioutil.TempFile("", "streamdeck-counter.log")
-	if err != nil {
-		log.Fatalf("error creating temp file: %v", err)
-	}
-	defer f.Close()
-
-	log.SetOutput(f)
-
 	ctx := context.Background()
 	if err := run(ctx); err != nil {
 		panic(err)
