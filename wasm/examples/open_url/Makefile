@@ -23,7 +23,7 @@ build:
 	GOOS=js GOARCH=wasm go build -o ./$(APPNAME)/main.wasm ./cmd
 
 serve: build
-	cd ./serve && go run main.go
+	go run ./serve/main.go
 
 distribute: build
 	@$(RM) ./$(RELEASEDIR)/*
