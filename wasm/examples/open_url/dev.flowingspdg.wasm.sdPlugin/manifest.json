@@ -9,7 +9,7 @@
             "FontSize": "24"
           }
         ],
-        "PropertyInspectorPath": "index.html", 
+        "PropertyInspectorPath": "pi/index.html", 
         "SupportedInMultiActions": true,
         "Tooltip": "OpenURL via wasm",
         "UUID": "dev.flowingspdg.was.openurl",
@@ -18,7 +18,8 @@
     ],
     "SDKVersion": 2,
     "Author": "Shugo Kawamura", 
-    "CodePath": "index.html", 
+    "CodePath": "bin/wasm.exe", 
+    "CodePathMac": "bin/wasm", 
     "PropertyInspectorPath": "inspector/index.html", 
     "Description": "URL Opener with Web Assembly", 
     "Name": "URL Open(wasm)", 

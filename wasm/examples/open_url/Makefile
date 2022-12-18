@@ -19,8 +19,10 @@ ifeq  ($(shell uname),Darwin)
 endif
 
 build: 
-	cp "$(GOROOT)/misc/wasm/wasm_exec.js" ./$(APPNAME)
-	GOOS=js GOARCH=wasm go build -o ./$(APPNAME)/main.wasm ./cmd
+	cp "$(GOROOT)/misc/wasm/wasm_exec.js" ./$(APPNAME)/pi
+	GOOS=js GOARCH=wasm go build -o ./$(APPNAME)/pi/main.wasm ./pi/cmd
+	GOOS=windows GOARCH=amd64 go build -o ./$(APPNAME)/bin/wasm.exe ./plugin/cmd
+	GOOS=darwin GOARCH=amd64 go build -o ./$(APPNAME)/bin/wasm ./plugin/cmd
 
 serve: build
 	go run ./serve/main.go
