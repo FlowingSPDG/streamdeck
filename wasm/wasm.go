@@ -44,6 +44,12 @@ func connectElgatoStreamDeckSocketJS[SettingsT any](this js.Value, args []js.Val
 	connectElgatoStreamDeckSocket(inPort, inPropertyInspectorUUID, inRegisterEvent, inInfo, inActionInfo)
 
 	// 関数を登録する
+	setStreamdeckFunctions()
+
+	return nil
+}
+
+func setStreamdeckFunctions() {
 	js.Global().Set(streamdeck.SetSettings, js.FuncOf(SetSettings))
 	js.Global().Set(streamdeck.GetSettings, js.FuncOf(GetSettings))
 	js.Global().Set(streamdeck.SetGlobalSettings, js.FuncOf(SetGlobalSettings))
@@ -57,8 +63,6 @@ func connectElgatoStreamDeckSocketJS[SettingsT any](this js.Value, args []js.Val
 	js.Global().Set(streamdeck.SwitchToProfile, js.FuncOf(SwitchToProfile))
 	js.Global().Set(streamdeck.SendToPropertyInspector, js.FuncOf(SendToPropertyInspector))
 	js.Global().Set(streamdeck.SendToPlugin, js.FuncOf(SendToPlugin))
-
-	return nil
 }
 
 func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspectorUUID string, inRegisterEvent string, inInfo inInfo, inActionInfo inActionInfo[SettingsT]) {
@@ -72,13 +76,13 @@ func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspecto
 
 	u := url.URL{Scheme: "ws", Host: fmt.Sprintf("127.0.0.1:%d", inPort)}
 	log.Printf("connecting to %s", u.String())
-
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
-		js.Global().Set("std_connected", true)
 		// TODO: handle error
 		fmt.Println("Failed to connect websocket:", err.Error())
+		return
 	}
+	js.Global().Set("std_connected", true)
 	// TODO: close websocket
 
 	Client = &sdClient[SettingsT]{

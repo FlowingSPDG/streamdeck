@@ -10,6 +10,8 @@ import (
 )
 
 type SDClient interface {
+	Close() error
+
 	SetSettings(ctx context.Context, settings any) error
 	GetSettings(ctx context.Context) error
 	SetGlobalSettings(ctx context.Context, settings any) error
@@ -37,6 +39,10 @@ type sdClient[SettingsT any] struct {
 
 	// Send Mutex lock
 	sendMutex *sync.Mutex
+}
+
+func (sd *sdClient[SettingsT]) Close() error {
+	return sd.c.Close()
 }
 
 // TODO: WSから受信したメッセージからハンドラを起動する
