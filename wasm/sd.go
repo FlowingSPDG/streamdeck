@@ -2,10 +2,8 @@ package wasm
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"sync"
-	"syscall/js"
 
 	"github.com/FlowingSPDG/streamdeck"
 	"nhooyr.io/websocket"
@@ -13,9 +11,6 @@ import (
 )
 
 type SDClient[SettingsT any] interface {
-	// JS関連
-	RegisterGlobal(name string) // js.Global()に登録する
-
 	// 基礎操作
 	Close() error
 	Register(ctx context.Context) error
@@ -43,21 +38,6 @@ type sdClient[SettingsT any] struct {
 
 	// Send Mutex lock
 	sendMutex *sync.Mutex
-}
-
-func (sd *sdClient[SettingsT]) RegisterGlobal(name string) {
-	fmt.Println("Registering methods")
-	window := js.Global()
-
-	window.Set(name, map[string]js.Func{
-		streamdeck.SetSettings:       js.FuncOf(SetSettings),
-		streamdeck.GetSettings:       js.FuncOf(GetSettings),
-		streamdeck.SetGlobalSettings: js.FuncOf(SetGlobalSettings),
-		streamdeck.GetGlobalSettings: js.FuncOf(GetGlobalSettings),
-		streamdeck.OpenURL:           js.FuncOf(OpenURL),
-		streamdeck.LogMessage:        js.FuncOf(LogMessage),
-		streamdeck.SendToPlugin:      js.FuncOf(SendToPlugin),
-	})
 }
 
 // Close close client

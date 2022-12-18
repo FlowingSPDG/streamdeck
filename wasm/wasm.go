@@ -14,10 +14,6 @@ import (
 	"nhooyr.io/websocket"
 )
 
-var (
-	Client SDClient[any]
-)
-
 func DeclarePropertyInspectorRegistration[S any]() {
 	js.Global().Set("std_connected", false)
 
@@ -85,7 +81,7 @@ func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspecto
 	}
 	// TODO: defer to close websocket
 
-	Client = &sdClient[SettingsT]{
+	sdc := &sdClient[SettingsT]{
 		c:                 c,
 		uuid:              inPropertyInspectorUUID,
 		registerEventName: inRegisterEvent,
@@ -94,12 +90,13 @@ func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspecto
 		isQT:              strings.Contains(appVersion, "QtWebEngine"),
 		sendMutex:         &sync.Mutex{},
 	}
+	wrapper := newSdClientJS(sdc)
 
-	if err := Client.Register(ctx); err != nil {
+	if err := sdc.Register(ctx); err != nil {
 		// TODO: handle error
 		fmt.Println("Failed to register Property Inspector:", err.Error())
 		return
 	}
-	Client.RegisterGlobal("$SD")
+	wrapper.RegisterGlobal("$SD")
 	js.Global().Set("std_connected", true)
 }
