@@ -5,7 +5,6 @@ package wasm
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/url"
 	"strings"
 	"sync"
@@ -90,7 +89,7 @@ func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspecto
 	appVersion := js.Global().Get("navigator").Get("appVersion").String()
 
 	u := url.URL{Scheme: "ws", Host: fmt.Sprintf("127.0.0.1:%d", inPort)}
-	log.Printf("connecting to %s", u.String())
+	fmt.Printf("connecting to %s", u.String())
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		// TODO: handle error
