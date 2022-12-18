@@ -6,13 +6,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"strings"
 	"sync"
 	"syscall/js"
+	"time"
 
 	"github.com/FlowingSPDG/streamdeck"
 	"nhooyr.io/websocket"
+	"nhooyr.io/websocket/wsjson"
 )
 
 var (
@@ -32,6 +33,8 @@ func DeclarePropertyInspectorRegistration[S any]() {
 	vals = append(vals, js.Global().Get("registerEventName"))
 	vals = append(vals, js.Global().Get("Info"))
 	vals = append(vals, js.Global().Get("actionInfo"))
+
+	js.Global().Set("connectElgatoStreamDeckSocketJS", js.FuncOf(connectElgatoStreamDeckSocketJS[S]))
 	connectElgatoStreamDeckSocketJS[S](js.Undefined(), vals)
 }
 
@@ -41,7 +44,7 @@ func DeclarePropertyInspectorRegistration[S any]() {
 // e.g.
 // connectElgatoStreamDeckSocket(28196, "F25D3773EA4693AB3C1B4323EA6B00D1", "registerPropertyInspector", '{"application":{"font":".AppleSystemUIFont","language":"en","platform":"mac","platformVersion":"13.1.0","version":"6.0.1.17722"},"colors":{"buttonPressedBackgroundColor":"#303030FF","buttonPressedBorderColor":"#646464FF","buttonPressedTextColor":"#969696FF","disabledColor":"#007AFF7F","highlightColor":"#007AFFFF","mouseDownColor":"#2EA8FFFF"},"devicePixelRatio":2,"devices":[{"id":"7EAEBEB876DC1927A04E7E31610731CF","name":"Stream Deck","size":{"columns":5,"rows":3},"type":0}],"plugin":{"uuid":"dev.flowingspdg.newtek","version":"0.1.4"}}', '{"action":"dev.flowingspdg.newtek.shortcuttcp","context":"52ba9e6590bf53c7ff96b89d61c880b7","device":"7EAEBEB876DC1927A04E7E31610731CF","payload":{"controller":"Keypad","coordinates":{"column":3,"row":2},"settings":{"host":"192.168.100.93","shortcut":"mode","value":"2"}}}')
 func connectElgatoStreamDeckSocketJS[SettingsT any](this js.Value, args []js.Value) any {
-	fmt.Println("connectElgatoStreamDeckSocketJS")
+	fmt.Println("connectElgatoStreamDeckSocket")
 	inPort := args[0].Int()
 	inPropertyInspectorUUID := args[1].String()
 	inRegisterEvent := args[2].String() // should be "registerPropertyInspector"
@@ -55,6 +58,7 @@ func connectElgatoStreamDeckSocketJS[SettingsT any](this js.Value, args []js.Val
 		fmt.Println("Failed to parse inInfo:", err)
 		return err
 	}
+
 	connectElgatoStreamDeckSocket(inPort, inPropertyInspectorUUID, inRegisterEvent, inInfo, inActionInfo)
 
 	// 関数を登録する
@@ -64,6 +68,7 @@ func connectElgatoStreamDeckSocketJS[SettingsT any](this js.Value, args []js.Val
 }
 
 func setStreamdeckFunctions() {
+	fmt.Println("Registering Global Functions")
 	js.Global().Set(streamdeck.SetSettings, js.FuncOf(SetSettings))
 	js.Global().Set(streamdeck.GetSettings, js.FuncOf(GetSettings))
 	js.Global().Set(streamdeck.SetGlobalSettings, js.FuncOf(SetGlobalSettings))
@@ -80,6 +85,9 @@ func setStreamdeckFunctions() {
 }
 
 func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspectorUUID string, inRegisterEvent string, inInfo inInfo, inActionInfo inActionInfo[SettingsT]) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
 	fmt.Println("inPort:", inPort)
 	fmt.Println("inPropertyInspectorUUID:", inPropertyInspectorUUID)
 	fmt.Println("inRegisterEvent:", inRegisterEvent)
@@ -88,16 +96,28 @@ func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspecto
 
 	appVersion := js.Global().Get("navigator").Get("appVersion").String()
 
-	u := url.URL{Scheme: "ws", Host: fmt.Sprintf("127.0.0.1:%d", inPort)}
-	fmt.Printf("connecting to %s", u.String())
-	c, _, err := websocket.Dial(context.TODO(), u.String(), nil)
+	fmt.Println("Try websocket")
+	p := fmt.Sprintf("ws://127.0.0.1:%d", inPort)
+	fmt.Printf("connecting to %s", p)
+
+	c, _, err := websocket.Dial(ctx, p, nil)
 	if err != nil {
 		// TODO: handle error
 		fmt.Println("Failed to connect websocket:", err.Error())
 		return
 	}
 	js.Global().Set("std_connected", true)
-	// TODO: close websocket
+	// TODO: defer to close websocket
+
+	// イベントを登録
+	if err := wsjson.Write(ctx, c, map[string]string{
+		"event": inRegisterEvent,
+		"uuid":  inPropertyInspectorUUID,
+	}); err != nil {
+		// TODO: handle error
+		fmt.Println("Failed to register Property Inspector:", err.Error())
+		return
+	}
 
 	Client = &sdClient[SettingsT]{
 		c:                 c,
