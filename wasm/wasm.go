@@ -3,13 +3,16 @@ package wasm
 // WASM: StreamDeck WebSocket Client for Property Inspector.
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/url"
 	"strings"
 	"sync"
 	"syscall/js"
+
+	"github.com/FlowingSPDG/streamdeck"
+	"github.com/gorilla/websocket"
 )
 
 var (
@@ -17,8 +20,8 @@ var (
 )
 
 func DeclarePropertyInspectorRegistration[S any]() {
-	fmt.Println("DeclarePropertyInspectorRegistration")
 	js.Global().Set("connectElgatoStreamDeckSocket", js.FuncOf(connectElgatoStreamDeckSocketJS[S]))
+	js.Global().Set("std_connected", false)
 }
 
 // function connectElgatoStreamDeckSocket(inPort, inPropertyInspectorUUID, inRegisterEvent, inInfo, inActionInfo)
@@ -41,17 +44,21 @@ func connectElgatoStreamDeckSocketJS[SettingsT any](this js.Value, args []js.Val
 	connectElgatoStreamDeckSocket(inPort, inPropertyInspectorUUID, inRegisterEvent, inInfo, inActionInfo)
 
 	// 関数を登録する
-	js.Global().Set("std_openURL", js.FuncOf(OpenURL))
+	js.Global().Set(streamdeck.SetSettings, js.FuncOf(SetSettings))
+	js.Global().Set(streamdeck.GetSettings, js.FuncOf(GetSettings))
+	js.Global().Set(streamdeck.SetGlobalSettings, js.FuncOf(SetGlobalSettings))
+	js.Global().Set(streamdeck.GetGlobalSettings, js.FuncOf(GetGlobalSettings))
+	js.Global().Set(streamdeck.OpenURL, js.FuncOf(OpenURL))
+	js.Global().Set(streamdeck.LogMessage, js.FuncOf(LogMessage))
+	js.Global().Set(streamdeck.SetImage, js.FuncOf(SetImage))
+	js.Global().Set(streamdeck.ShowAlert, js.FuncOf(ShowAlert))
+	js.Global().Set(streamdeck.ShowOk, js.FuncOf(ShowOk))
+	js.Global().Set(streamdeck.SetState, js.FuncOf(SetState))
+	js.Global().Set(streamdeck.SwitchToProfile, js.FuncOf(SwitchToProfile))
+	js.Global().Set(streamdeck.SendToPropertyInspector, js.FuncOf(SendToPropertyInspector))
+	js.Global().Set(streamdeck.SendToPlugin, js.FuncOf(SendToPlugin))
 
 	return nil
-}
-
-func OpenURL(this js.Value, args []js.Value) any {
-	u, err := url.Parse(args[0].String())
-	if err != nil {
-		return err
-	}
-	return Client.OpenURL(context.TODO(), u)
 }
 
 func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspectorUUID string, inRegisterEvent string, inInfo inInfo, inActionInfo inActionInfo[SettingsT]) {
@@ -63,10 +70,19 @@ func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspecto
 
 	appVersion := js.Global().Get("navigator").Get("appVersion").String()
 
-	// TODO: websocketのクライアントを作成する
-	// グローバル変数の"Client"を上書きする
+	u := url.URL{Scheme: "ws", Host: fmt.Sprintf("127.0.0.1:%d", inPort)}
+	log.Printf("connecting to %s", u.String())
+
+	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		js.Global().Set("std_connected", true)
+		// TODO: handle error
+		fmt.Println("Failed to connect websocket:", err.Error())
+	}
+	// TODO: close websocket
+
 	Client = &sdClient[SettingsT]{
-		c:                 nil,
+		c:                 c,
 		uuid:              inPropertyInspectorUUID,
 		registerEventName: inRegisterEvent,
 		actionInfo:        inActionInfo,
