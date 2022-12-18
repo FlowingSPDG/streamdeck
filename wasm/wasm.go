@@ -14,7 +14,7 @@ import (
 	"nhooyr.io/websocket"
 )
 
-func DeclarePropertyInspectorRegistration[S any](ctx context.Context) error {
+func InitializePropertyInspector[S any]() (SDClient[S], error) {
 	js.Global().Set("std_connected", false)
 
 	// wasmを読み込む前にconnectElgatoStreamDeckSocketが走ってしまうので、
@@ -25,20 +25,19 @@ func DeclarePropertyInspectorRegistration[S any](ctx context.Context) error {
 	inInfo := inInfo{}
 	if err := json.Unmarshal([]byte(js.Global().Get("Info").String()), &inInfo); err != nil {
 		fmt.Println("Failed to parse inInfo:", err)
-		return err
+		return nil, err
 	}
 	inActionInfo := inActionInfo[S]{}
 	if err := json.Unmarshal([]byte(js.Global().Get("actionInfo").String()), &inActionInfo); err != nil {
 		fmt.Println("Failed to parse inInfo:", err)
-		return err
+		return nil, err
 	}
 	SD, err := connectElgatoStreamDeckSocket(inPort, inPropertyInspectorUUID, inRegisterEvent, inInfo, inActionInfo)
 	if err != nil {
 		fmt.Println("Failed to connect ElgatoStreamDeckSocket:", err)
-		return err
+		return nil, err
 	}
-	SD.LogMessage(ctx, "PropertyInspector Initialized")
-	return nil
+	return SD, nil
 }
 
 // DidReceiveSettings を受信したり、WebSocketの接続が確立した時にJSに変数を格納したい

@@ -14,7 +14,11 @@ type Settings struct {
 func main() {
 	ctx := context.Background()
 
-	wasm.DeclarePropertyInspectorRegistration[Settings](ctx)
+	SD, err := wasm.InitializePropertyInspector[Settings]()
+	if err != nil {
+		panic(err)
+	}
+	SD.LogMessage(ctx, "PropertyInspector Initialized")
 	done := make(chan struct{}, 0)
 	<-done
 }
