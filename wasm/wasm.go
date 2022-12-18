@@ -13,7 +13,6 @@ import (
 
 	"github.com/FlowingSPDG/streamdeck"
 	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wsjson"
 )
 
 var (
@@ -101,17 +100,6 @@ func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspecto
 	}
 	// TODO: defer to close websocket
 
-	// イベントを登録
-	if err := wsjson.Write(ctx, c, map[string]string{
-		"event": inRegisterEvent,
-		"uuid":  inPropertyInspectorUUID,
-	}); err != nil {
-		// TODO: handle error
-		fmt.Println("Failed to register Property Inspector:", err.Error())
-		return
-	}
-	js.Global().Set("std_connected", true)
-
 	Client = &sdClient[SettingsT]{
 		c:                 c,
 		uuid:              inPropertyInspectorUUID,
@@ -121,4 +109,11 @@ func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspecto
 		isQT:              strings.Contains(appVersion, "QtWebEngine"),
 		sendMutex:         &sync.Mutex{},
 	}
+
+	if err := Client.Register(ctx); err != nil {
+		// TODO: handle error
+		fmt.Println("Failed to register Property Inspector:", err.Error())
+		return
+	}
+	js.Global().Set("std_connected", true)
 }

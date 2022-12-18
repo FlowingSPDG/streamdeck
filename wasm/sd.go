@@ -12,6 +12,7 @@ import (
 
 type SDClient[SettingsT any] interface {
 	Close() error
+	Register(ctx context.Context) error
 
 	SetSettings(ctx context.Context, settings SettingsT) error
 	GetSettings(ctx context.Context) error
@@ -82,4 +83,12 @@ func (sd *sdClient[SettingsT]) LogMessage(ctx context.Context, message string) e
 // SendToPlugin Send a payload to the plugin.
 func (sd *sdClient[SettingsT]) SendToPlugin(ctx context.Context, payload any) error {
 	return sd.send(ctx, streamdeck.NewEvent(ctx, streamdeck.SendToPlugin, payload))
+}
+
+// Register Register PropertyInspector to StreamDeck
+func (sd *sdClient[SettingsT]) Register(ctx context.Context) error {
+	return sd.send(ctx, streamdeck.Event{
+		Event: sd.registerEventName,
+		UUID:  sd.uuid,
+	})
 }
