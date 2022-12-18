@@ -24,7 +24,7 @@
     "Name": "URL Open(wasm)", 
     "Icon": "images/icon", 
     "URL": "https://flowing.tokyo", 
-    "Version": "0.1.4",
+    "Version": "0.1.0",
     "OS": [
       {
         "Platform": "mac", 

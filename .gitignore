@@ -64,3 +64,5 @@ $RECYCLE.BIN/
 *.log
 *.wasm
 *.DS_Store
+*.streamDeckPlugin
+*.streamDeckPlugin
