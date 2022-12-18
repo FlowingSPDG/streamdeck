@@ -3,6 +3,7 @@ package wasm
 // WASM: StreamDeck WebSocket Client for Property Inspector.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -11,7 +12,7 @@ import (
 	"syscall/js"
 
 	"github.com/FlowingSPDG/streamdeck"
-	"github.com/gorilla/websocket"
+	"nhooyr.io/websocket"
 )
 
 var (
@@ -90,7 +91,7 @@ func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspecto
 
 	u := url.URL{Scheme: "ws", Host: fmt.Sprintf("127.0.0.1:%d", inPort)}
 	fmt.Printf("connecting to %s", u.String())
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	c, _, err := websocket.Dial(context.TODO(), u.String(), nil)
 	if err != nil {
 		// TODO: handle error
 		fmt.Println("Failed to connect websocket:", err.Error())

@@ -59,7 +59,7 @@ func run(ctx context.Context) error {
 	client := streamdeck.NewClient(ctx, params)
 	setup(client)
 
-	return client.Run()
+	return client.Run(ctx)
 }
 
 func setup(client *streamdeck.Client) {

@@ -36,7 +36,7 @@ func OpenURL(this js.Value, args []js.Value) any {
 }
 
 func LogMessage(this js.Value, args []js.Value) any {
-	return Client.LogMessage(args[0].String())
+	return Client.LogMessage(context.TODO(), args[0].String())
 }
 
 func SetImage(this js.Value, args []js.Value) any {

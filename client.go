@@ -13,7 +13,8 @@ import (
 	"time"
 
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
-	"github.com/gorilla/websocket"
+	"nhooyr.io/websocket"
+	"nhooyr.io/websocket/wsjson"
 )
 
 var (
@@ -99,12 +100,12 @@ func (client *Client) RegisterNoActionHandler(eventName string, handler EventHan
 }
 
 // Run Start communicating with StreamDeck software
-func (client *Client) Run() error {
+func (client *Client) Run(ctx context.Context) error {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
 	u := url.URL{Scheme: "ws", Host: fmt.Sprintf("127.0.0.1:%d", client.params.Port)}
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	c, _, err := websocket.Dial(ctx, u.String(), nil)
 	if err != nil {
 		return err
 	}
@@ -114,18 +115,10 @@ func (client *Client) Run() error {
 	go func() {
 		defer close(client.done)
 		for {
-			messageType, message, err := client.c.ReadMessage()
+			_, message, err := client.c.Read(ctx)
 			if err != nil {
 				logger.Printf("read error: %v\n", err)
 				return
-			}
-
-			if messageType == websocket.PingMessage {
-				logger.Printf("received ping message\n")
-				if err := client.c.WriteMessage(websocket.PongMessage, []byte{}); err != nil {
-					logger.Printf("error while ponging: %v\n", err)
-				}
-				continue
 			}
 
 			event := Event{}
@@ -165,7 +158,7 @@ func (client *Client) Run() error {
 		}
 	}()
 
-	if err := client.register(client.params); err != nil {
+	if err := client.register(ctx, client.params); err != nil {
 		return err
 	}
 
@@ -178,95 +171,93 @@ func (client *Client) Run() error {
 	}
 }
 
-func (client *Client) register(params RegistrationParams) error {
-	if err := client.send(Event{UUID: params.PluginUUID, Event: params.RegisterEvent}); err != nil {
+func (client *Client) register(ctx context.Context, params RegistrationParams) error {
+	if err := client.send(ctx, Event{UUID: params.PluginUUID, Event: params.RegisterEvent}); err != nil {
 		client.Close()
 		return err
 	}
 	return nil
 }
 
-func (client *Client) send(event Event) error {
-	j, _ := json.Marshal(event)
+func (client *Client) send(ctx context.Context, event Event) error {
 	client.sendMutex.Lock()
 	defer client.sendMutex.Unlock()
-	logger.Printf("sending message: %v\n", string(j))
-	return client.c.WriteJSON(event)
+	return wsjson.Write(ctx, client.c, event)
 }
 
 // SetSettings Save data persistently for the action's instance.
 func (client *Client) SetSettings(ctx context.Context, settings any) error {
-	return client.send(NewEvent(ctx, SetSettings, settings))
+	return client.send(ctx, NewEvent(ctx, SetSettings, settings))
 }
 
 // GetSettings Request the persistent data for the action's instance.
 func (client *Client) GetSettings(ctx context.Context) error {
-	return client.send(NewEvent(ctx, GetSettings, nil))
+	return client.send(ctx, NewEvent(ctx, GetSettings, nil))
 }
 
 // SetGlobalSettings Save data securely and globally for the plugin.
 func (client *Client) SetGlobalSettings(ctx context.Context, settings any) error {
-	return client.send(NewEvent(ctx, SetGlobalSettings, settings))
+	return client.send(ctx, NewEvent(ctx, SetGlobalSettings, settings))
 }
 
 // GetGlobalSettings Request the global persistent data
 func (client *Client) GetGlobalSettings(ctx context.Context) error {
-	return client.send(NewEvent(ctx, GetGlobalSettings, nil))
+	return client.send(ctx, NewEvent(ctx, GetGlobalSettings, nil))
 }
 
 // OpenURL Open an URL in the default browser.
 func (client *Client) OpenURL(ctx context.Context, u url.URL) error {
-	return client.send(NewEvent(ctx, OpenURL, OpenURLPayload{URL: u.String()}))
+	return client.send(ctx, NewEvent(ctx, OpenURL, OpenURLPayload{URL: u.String()}))
 }
 
 // LogMessage Write a debug log to the logs file.
-func (client *Client) LogMessage(message string) error {
-	return client.send(NewEvent(nil, LogMessage, LogMessagePayload{Message: message}))
+func (client *Client) LogMessage(ctx context.Context, message string) error {
+	return client.send(ctx, NewEvent(nil, LogMessage, LogMessagePayload{Message: message}))
 }
 
 // SetTitle Dynamically change the title of an instance of an action.
 func (client *Client) SetTitle(ctx context.Context, title string, target Target) error {
-	return client.send(NewEvent(ctx, SetTitle, SetTitlePayload{Title: title, Target: target}))
+	return client.send(ctx, NewEvent(ctx, SetTitle, SetTitlePayload{Title: title, Target: target}))
 }
 
 // SetImage Dynamically change the image displayed by an instance of an action.
 func (client *Client) SetImage(ctx context.Context, base64image string, target Target) error {
-	return client.send(NewEvent(ctx, SetImage, SetImagePayload{Base64Image: base64image, Target: target}))
+	return client.send(ctx, NewEvent(ctx, SetImage, SetImagePayload{Base64Image: base64image, Target: target}))
 }
 
 // ShowAlert Temporarily show an alert icon on the image displayed by an instance of an action.
 func (client *Client) ShowAlert(ctx context.Context) error {
-	return client.send(NewEvent(ctx, ShowAlert, nil))
+	return client.send(ctx, NewEvent(ctx, ShowAlert, nil))
 }
 
 // ShowOk Temporarily show an OK checkmark icon on the image displayed by an instance of an action
 func (client *Client) ShowOk(ctx context.Context) error {
-	return client.send(NewEvent(ctx, ShowOk, nil))
+	return client.send(ctx, NewEvent(ctx, ShowOk, nil))
 }
 
 // SetState Change the state of the action's instance supporting multiple states.
 func (client *Client) SetState(ctx context.Context, state int) error {
-	return client.send(NewEvent(ctx, SetState, SetStatePayload{State: state}))
+	return client.send(ctx, NewEvent(ctx, SetState, SetStatePayload{State: state}))
 }
 
 // SwitchToProfile Switch to one of the preconfigured read-only profiles.
 func (client *Client) SwitchToProfile(ctx context.Context, profile string) error {
-	return client.send(NewEvent(ctx, SwitchToProfile, SwitchProfilePayload{Profile: profile}))
+	return client.send(ctx, NewEvent(ctx, SwitchToProfile, SwitchProfilePayload{Profile: profile}))
 }
 
 // SendToPropertyInspector Send a payload to the Property Inspector.
 func (client *Client) SendToPropertyInspector(ctx context.Context, payload any) error {
-	return client.send(NewEvent(ctx, SendToPropertyInspector, payload))
+	return client.send(ctx, NewEvent(ctx, SendToPropertyInspector, payload))
 }
 
 // SendToPlugin Send a payload to the plugin.
 func (client *Client) SendToPlugin(ctx context.Context, payload any) error {
-	return client.send(NewEvent(ctx, SendToPlugin, payload))
+	return client.send(ctx, NewEvent(ctx, SendToPlugin, payload))
 }
 
 // Close close client
 func (client *Client) Close() error {
-	err := client.c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	err := client.c.Close(websocket.StatusNormalClosure, "")
 	if err != nil {
 		return err
 	}
@@ -274,5 +265,5 @@ func (client *Client) Close() error {
 	case <-client.done:
 	case <-time.After(time.Second):
 	}
-	return client.c.Close()
+	return nil
 }
