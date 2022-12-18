@@ -1,6 +1,10 @@
 package main
 
-import "github.com/FlowingSPDG/streamdeck/wasm"
+import (
+	"context"
+
+	"github.com/FlowingSPDG/streamdeck/wasm"
+)
 
 // Settings PIの設定に使うJSON形式の構造体
 type Settings struct {
@@ -8,7 +12,9 @@ type Settings struct {
 }
 
 func main() {
-	wasm.DeclarePropertyInspectorRegistration[Settings]()
+	ctx := context.Background()
+
+	wasm.DeclarePropertyInspectorRegistration[Settings](ctx)
 	done := make(chan struct{}, 0)
 	<-done
 }

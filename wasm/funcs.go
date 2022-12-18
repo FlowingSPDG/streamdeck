@@ -37,7 +37,9 @@ func (sdj *sdClientJS[SettingsT]) RegisterGlobal(name string) {
 }
 
 func (sdj *sdClientJS[SettingsT]) SetSettings(this js.Value, args []js.Value) any {
-	return sdj.c.SetSettings(context.TODO(), args[0].String())
+	// return sdj.c.SetSettings(context.TODO(), args[0].String())
+	// TODO
+	return nil
 }
 
 func (sdj *sdClientJS[SettingsT]) GetSettings(this js.Value, args []js.Value) any {
@@ -45,7 +47,9 @@ func (sdj *sdClientJS[SettingsT]) GetSettings(this js.Value, args []js.Value) an
 }
 
 func (sdj *sdClientJS[SettingsT]) SetGlobalSettings(this js.Value, args []js.Value) any {
-	return sdj.c.SetGlobalSettings(context.TODO(), args[0].String())
+	// return sdj.c.SetGlobalSettings(context.TODO(), args[0].String())
+	// TODO
+	return nil
 }
 
 func (sdj *sdClientJS[SettingsT]) GetGlobalSettings(this js.Value, args []js.Value) any {
@@ -65,5 +69,7 @@ func (sdj *sdClientJS[SettingsT]) LogMessage(this js.Value, args []js.Value) any
 }
 
 func (sdj *sdClientJS[SettingsT]) SendToPlugin(this js.Value, args []js.Value) any {
-	return sdj.c.SendToPlugin(context.TODO(), args[0].String())
+	// return sdj.c.SendToPlugin(context.TODO(), args[0].String())
+	// TODO
+	return nil
 }

@@ -53,7 +53,7 @@ func (sd *sdClient[SettingsT]) send(ctx context.Context, event streamdeck.Event)
 }
 
 // SetSettings Save data persistently for the action's instance.
-func (sd *sdClient[SettingsT]) SetSettings(ctx context.Context, settings any) error {
+func (sd *sdClient[SettingsT]) SetSettings(ctx context.Context, settings SettingsT) error {
 	return sd.send(ctx, streamdeck.NewEvent(ctx, streamdeck.SetSettings, settings))
 }
 
@@ -63,7 +63,7 @@ func (sd *sdClient[SettingsT]) GetSettings(ctx context.Context) error {
 }
 
 // SetGlobalSettings Save data securely and globally for the plugin.
-func (sd *sdClient[SettingsT]) SetGlobalSettings(ctx context.Context, settings any) error {
+func (sd *sdClient[SettingsT]) SetGlobalSettings(ctx context.Context, settings SettingsT) error {
 	return sd.send(ctx, streamdeck.NewEvent(ctx, streamdeck.SetGlobalSettings, settings))
 }
 
@@ -83,7 +83,7 @@ func (sd *sdClient[SettingsT]) LogMessage(ctx context.Context, message string) e
 }
 
 // SendToPlugin Send a payload to the plugin.
-func (sd *sdClient[SettingsT]) SendToPlugin(ctx context.Context, payload any) error {
+func (sd *sdClient[SettingsT]) SendToPlugin(ctx context.Context, payload SettingsT) error {
 	return sd.send(ctx, streamdeck.NewEvent(ctx, streamdeck.SendToPlugin, payload))
 }
 
