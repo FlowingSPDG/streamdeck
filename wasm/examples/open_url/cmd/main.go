@@ -4,7 +4,7 @@ import "github.com/FlowingSPDG/streamdeck/wasm"
 
 // Settings PIの設定に使うJSON形式の構造体
 type Settings struct {
-	Counter int `json:"counter"`
+	URL string `json:"url"`
 }
 
 func main() {

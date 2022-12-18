@@ -61,6 +61,6 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.gitignore.io/api/go,windows,visualstudiocode
-examples/cpu/cpu
 *.log
-wasm/serve/public/main.wasm
+*.wasm
+*.DS_Store
