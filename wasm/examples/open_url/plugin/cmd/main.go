@@ -14,7 +14,12 @@ func main() {
 		panic(err)
 	}
 	c := streamdeck.NewClient(ctx, params)
-	c.LogMessage("Start Backend")
-	done := make(chan struct{})
-	<-done
+	ac := c.Action("dev.flowingspdg.was.openurl")
+	ac.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		client.LogMessage("WillAppear on Backend")
+		return nil
+	})
+	if err := c.Run(); err != nil {
+		panic(err)
+	}
 }
