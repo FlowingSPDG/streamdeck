@@ -17,13 +17,10 @@ import (
 )
 
 var (
-	Client SDClient
+	Client SDClient[any]
 )
 
 func DeclarePropertyInspectorRegistration[S any]() {
-	// wasmを読み込む前にconnectElgatoStreamDeckSocketが走ってしまう
-	// wasmロード前に保存して、ロードが終わり次第即座に起動する
-
 	js.Global().Set("std_connected", false)
 
 	// これならパースしてString()とかでも良いのでは？
@@ -34,6 +31,8 @@ func DeclarePropertyInspectorRegistration[S any]() {
 	vals = append(vals, js.Global().Get("Info"))
 	vals = append(vals, js.Global().Get("actionInfo"))
 
+	// wasmを読み込む前にconnectElgatoStreamDeckSocketが走ってしまうので、
+	// wasmロード前に受け取った値をグローバルに保存して、ロードが終わり次第wasm側から起動する
 	js.Global().Set("connectElgatoStreamDeckSocketJS", js.FuncOf(connectElgatoStreamDeckSocketJS[S]))
 	connectElgatoStreamDeckSocketJS[S](js.Undefined(), vals)
 }
@@ -75,12 +74,6 @@ func setStreamdeckFunctions() {
 	js.Global().Set(streamdeck.GetGlobalSettings, js.FuncOf(GetGlobalSettings))
 	js.Global().Set(streamdeck.OpenURL, js.FuncOf(OpenURL))
 	js.Global().Set(streamdeck.LogMessage, js.FuncOf(LogMessage))
-	js.Global().Set(streamdeck.SetImage, js.FuncOf(SetImage))
-	js.Global().Set(streamdeck.ShowAlert, js.FuncOf(ShowAlert))
-	js.Global().Set(streamdeck.ShowOk, js.FuncOf(ShowOk))
-	js.Global().Set(streamdeck.SetState, js.FuncOf(SetState))
-	js.Global().Set(streamdeck.SwitchToProfile, js.FuncOf(SwitchToProfile))
-	js.Global().Set(streamdeck.SendToPropertyInspector, js.FuncOf(SendToPropertyInspector))
 	js.Global().Set(streamdeck.SendToPlugin, js.FuncOf(SendToPlugin))
 }
 
