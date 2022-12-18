@@ -11,7 +11,6 @@ import (
 	"syscall/js"
 	"time"
 
-	"github.com/FlowingSPDG/streamdeck"
 	"nhooyr.io/websocket"
 )
 
@@ -59,21 +58,7 @@ func connectElgatoStreamDeckSocketJS[SettingsT any](this js.Value, args []js.Val
 
 	connectElgatoStreamDeckSocket(inPort, inPropertyInspectorUUID, inRegisterEvent, inInfo, inActionInfo)
 
-	// 関数を登録する
-	setStreamdeckFunctions()
-
 	return nil
-}
-
-func setStreamdeckFunctions() {
-	fmt.Println("Registering Global Functions")
-	js.Global().Set(streamdeck.SetSettings, js.FuncOf(SetSettings))
-	js.Global().Set(streamdeck.GetSettings, js.FuncOf(GetSettings))
-	js.Global().Set(streamdeck.SetGlobalSettings, js.FuncOf(SetGlobalSettings))
-	js.Global().Set(streamdeck.GetGlobalSettings, js.FuncOf(GetGlobalSettings))
-	js.Global().Set(streamdeck.OpenURL, js.FuncOf(OpenURL))
-	js.Global().Set(streamdeck.LogMessage, js.FuncOf(LogMessage))
-	js.Global().Set(streamdeck.SendToPlugin, js.FuncOf(SendToPlugin))
 }
 
 func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspectorUUID string, inRegisterEvent string, inInfo inInfo, inActionInfo inActionInfo[SettingsT]) {
@@ -115,5 +100,6 @@ func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspecto
 		fmt.Println("Failed to register Property Inspector:", err.Error())
 		return
 	}
+	Client.RegisterGlobal("$SD")
 	js.Global().Set("std_connected", true)
 }
