@@ -11,7 +11,7 @@ import (
 
 type SDClient interface {
 	// TODO
-	OpenURL(ctx context.Context, u url.URL) error
+	OpenURL(ctx context.Context, u *url.URL) error
 }
 
 type sdClient[SettingsT any] struct {
@@ -29,7 +29,7 @@ type sdClient[SettingsT any] struct {
 
 // TODO: WSから受信したメッセージからハンドラを起動する
 
-func (sd *sdClient[SettingsT]) OpenURL(ctx context.Context, u url.URL) error {
+func (sd *sdClient[SettingsT]) OpenURL(ctx context.Context, u *url.URL) error {
 	return sd.send(streamdeck.NewEvent(ctx, streamdeck.OpenURL, streamdeck.OpenURLPayload{URL: u.String()}))
 }
 

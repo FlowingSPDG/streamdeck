@@ -3,8 +3,10 @@ package wasm
 // WASM: StreamDeck WebSocket Client for Property Inspector.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 	"sync"
 	"syscall/js"
@@ -36,10 +38,20 @@ func connectElgatoStreamDeckSocketJS[SettingsT any](this js.Value, args []js.Val
 		fmt.Println("Failed to parse inInfo:", err)
 		return err
 	}
-
 	connectElgatoStreamDeckSocket(inPort, inPropertyInspectorUUID, inRegisterEvent, inInfo, inActionInfo)
 
+	// 関数を登録する
+	js.Global().Set("std_openURL", js.FuncOf(OpenURL))
+
 	return nil
+}
+
+func OpenURL(this js.Value, args []js.Value) any {
+	u, err := url.Parse(args[0].String())
+	if err != nil {
+		return err
+	}
+	return Client.OpenURL(context.TODO(), u)
 }
 
 func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspectorUUID string, inRegisterEvent string, inInfo inInfo, inActionInfo inActionInfo[SettingsT]) {

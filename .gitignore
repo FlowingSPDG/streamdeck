@@ -63,3 +63,4 @@ $RECYCLE.BIN/
 # End of https://www.gitignore.io/api/go,windows,visualstudiocode
 examples/cpu/cpu
 *.log
+wasm/serve/public/main.wasm
