@@ -106,7 +106,6 @@ func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspecto
 		fmt.Println("Failed to connect websocket:", err.Error())
 		return
 	}
-	js.Global().Set("std_connected", true)
 	// TODO: defer to close websocket
 
 	// イベントを登録
@@ -118,6 +117,7 @@ func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspecto
 		fmt.Println("Failed to register Property Inspector:", err.Error())
 		return
 	}
+	js.Global().Set("std_connected", true)
 
 	Client = &sdClient[SettingsT]{
 		c:                 c,
