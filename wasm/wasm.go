@@ -9,12 +9,12 @@ import (
 	"strings"
 	"sync"
 	"syscall/js"
-	"time"
 
+	"github.com/FlowingSPDG/streamdeck"
 	"nhooyr.io/websocket"
 )
 
-func InitializePropertyInspector[S any]() (SDClient[S], error) {
+func InitializePropertyInspector[S Settings](ctx context.Context) (*SDClient[S], error) {
 	js.Global().Set("std_connected", false)
 
 	// wasmを読み込む前にconnectElgatoStreamDeckSocketが走ってしまうので、
@@ -32,7 +32,7 @@ func InitializePropertyInspector[S any]() (SDClient[S], error) {
 		fmt.Println("Failed to parse inInfo:", err)
 		return nil, err
 	}
-	SD, err := connectElgatoStreamDeckSocket(inPort, inPropertyInspectorUUID, inRegisterEvent, inInfo, inActionInfo)
+	SD, err := connectElgatoStreamDeckSocket(ctx, inPort, inPropertyInspectorUUID, inRegisterEvent, inInfo, inActionInfo)
 	if err != nil {
 		fmt.Println("Failed to connect ElgatoStreamDeckSocket:", err)
 		return nil, err
@@ -45,10 +45,7 @@ func InitializePropertyInspector[S any]() (SDClient[S], error) {
 // function connectElgatoStreamDeckSocket(inPort, inPropertyInspectorUUID, inRegisterEvent, inInfo, inActionInfo)
 // e.g.
 // connectElgatoStreamDeckSocket(28196, "F25D3773EA4693AB3C1B4323EA6B00D1", "registerPropertyInspector", '{"application":{"font":".AppleSystemUIFont","language":"en","platform":"mac","platformVersion":"13.1.0","version":"6.0.1.17722"},"colors":{"buttonPressedBackgroundColor":"#303030FF","buttonPressedBorderColor":"#646464FF","buttonPressedTextColor":"#969696FF","disabledColor":"#007AFF7F","highlightColor":"#007AFFFF","mouseDownColor":"#2EA8FFFF"},"devicePixelRatio":2,"devices":[{"id":"7EAEBEB876DC1927A04E7E31610731CF","name":"Stream Deck","size":{"columns":5,"rows":3},"type":0}],"plugin":{"uuid":"dev.flowingspdg.newtek","version":"0.1.4"}}', '{"action":"dev.flowingspdg.newtek.shortcuttcp","context":"52ba9e6590bf53c7ff96b89d61c880b7","device":"7EAEBEB876DC1927A04E7E31610731CF","payload":{"controller":"Keypad","coordinates":{"column":3,"row":2},"settings":{"host":"192.168.100.93","shortcut":"mode","value":"2"}}}')
-func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspectorUUID string, inRegisterEvent string, inInfo inInfo, inActionInfo inActionInfo[SettingsT]) (SDClient[SettingsT], error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-
+func connectElgatoStreamDeckSocket[SettingsT Settings](ctx context.Context, inPort int, inPropertyInspectorUUID string, inRegisterEvent string, inInfo inInfo, inActionInfo inActionInfo[SettingsT]) (*SDClient[SettingsT], error) {
 	fmt.Println("inPort:", inPort)
 	fmt.Println("inPropertyInspectorUUID:", inPropertyInspectorUUID)
 	fmt.Println("inRegisterEvent:", inRegisterEvent)
@@ -57,7 +54,6 @@ func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspecto
 
 	appVersion := js.Global().Get("navigator").Get("appVersion").String()
 
-	fmt.Println("Try websocket")
 	p := fmt.Sprintf("ws://127.0.0.1:%d", inPort)
 	fmt.Printf("connecting to %s", p)
 
@@ -69,14 +65,17 @@ func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspecto
 	}
 	// TODO: defer to close websocket
 
-	sdc := &sdClient[SettingsT]{
-		c:                 c,
-		uuid:              inPropertyInspectorUUID,
-		registerEventName: inRegisterEvent,
-		actionInfo:        inActionInfo,
-		inInfo:            inInfo,
-		isQT:              strings.Contains(appVersion, "QtWebEngine"),
-		sendMutex:         &sync.Mutex{},
+	sdc := &SDClient[SettingsT]{
+		c:                                 c,
+		uuid:                              inPropertyInspectorUUID,
+		registerEventName:                 inRegisterEvent,
+		actionInfo:                        inActionInfo,
+		inInfo:                            inInfo,
+		isQT:                              strings.Contains(appVersion, "QtWebEngine"),
+		sendMutex:                         &sync.Mutex{},
+		onDidReceiveSettingsHandler:       func(streamdeck.Event) {},
+		onDidReceiveGlobalSettingsHandler: func(streamdeck.Event) {},
+		onSendToPropertyInspectorHandler:  func(streamdeck.Event) {},
 	}
 	wrapper := newSdClientJS(sdc)
 
@@ -89,5 +88,30 @@ func connectElgatoStreamDeckSocket[SettingsT any](inPort int, inPropertyInspecto
 	// window.$SD に設定するとJavaScriptからも利用が可能になる
 	wrapper.RegisterGlobal("$SD")
 	js.Global().Set("std_connected", true)
+
+	go func() {
+		for {
+			_, message, err := c.Read(context.TODO())
+			if err != nil {
+				fmt.Println("Failed to read message from websocket:", err)
+				return
+			}
+			event := streamdeck.Event{}
+			if err := json.Unmarshal(message, &event); err != nil {
+				fmt.Printf("failed to unmarshal received event: %s\n", string(message))
+				continue
+			}
+			// fmt.Printf("RCV:%#v\n", event)
+			switch event.Event {
+			case streamdeck.DidReceiveSettings:
+				go sdc.onDidReceiveSettingsHandler(event)
+			case streamdeck.DidReceiveGlobalSettings:
+				go sdc.onDidReceiveGlobalSettingsHandler(event)
+			case streamdeck.SendToPropertyInspector:
+				go sdc.onSendToPropertyInspectorHandler(event)
+			}
+		}
+	}()
+
 	return sdc, nil
 }

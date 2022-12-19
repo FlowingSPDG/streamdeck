@@ -13,11 +13,11 @@ import (
 // TODO: Client がnilだった場合やめる
 
 // sdClientJSのJS wrapper
-type sdClientJS[SettingsT any] struct {
-	c *sdClient[SettingsT]
+type sdClientJS[SettingsT Settings] struct {
+	c *SDClient[SettingsT]
 }
 
-func newSdClientJS[SettingsT any](c *sdClient[SettingsT]) *sdClientJS[SettingsT] {
+func newSdClientJS[SettingsT Settings](c *SDClient[SettingsT]) *sdClientJS[SettingsT] {
 	return &sdClientJS[SettingsT]{c: c}
 }
 

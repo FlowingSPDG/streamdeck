@@ -12,7 +12,7 @@
         "PropertyInspectorPath": "pi/index.html", 
         "SupportedInMultiActions": true,
         "Tooltip": "OpenURL via wasm",
-        "UUID": "dev.flowingspdg.was.openurl",
+        "UUID": "dev.flowingspdg.wasm.openurl",
         "Icon": "images/icon" 
       }
     ],
