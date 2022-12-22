@@ -101,7 +101,6 @@ func connectElgatoStreamDeckSocket[SettingsT Settings](ctx context.Context, inPo
 				fmt.Printf("failed to unmarshal received event: %s\n", string(message))
 				continue
 			}
-			// fmt.Printf("RCV:%#v\n", event)
 			switch event.Event {
 			case streamdeck.DidReceiveSettings:
 				go sdc.onDidReceiveSettingsHandler(event)

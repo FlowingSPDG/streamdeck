@@ -172,6 +172,11 @@ func (client *Client) Run(ctx context.Context) error {
 	}
 }
 
+// Check if WebSocket connection is non-nil.
+func (client *Client) IsConnected() bool {
+	return client.c != nil
+}
+
 func (client *Client) register(ctx context.Context, params RegistrationParams) error {
 	if err := client.send(ctx, Event{UUID: params.PluginUUID, Event: params.RegisterEvent}); err != nil {
 		client.Close()
