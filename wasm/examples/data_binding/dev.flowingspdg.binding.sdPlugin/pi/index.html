@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Go(WASM) Data Binding</title>
+    <link rel="stylesheet" type="text/css" href="./sdpi.css">
+</head>
+
+<body>
+    <!-- wasm_exec.jsを読み込む -->
+    <script src="./wasm_exec.js"></script>
+    <script src="./std.js"></script>
+    <input id="number" type="number" oninput="std_oninput(this.id, parseInt(this.value))">NUMBER FIELD</input><br>
+    <input id="str" oninput="std_oninput(this.id, this.value)">STRING FIELD</input><br>
+    <button onclick="std_setSettings()">SAVE!</button>
+</body>
+
+</html>

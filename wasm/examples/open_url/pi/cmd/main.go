@@ -20,7 +20,7 @@ func main() {
 	ctx := context.Background()
 
 	// Initialize wasm-based PropertyInspector
-	SD, err := wasm.InitializePropertyInspector[*models.Settings](ctx)
+	SD, err := wasm.InitializePropertyInspector(ctx, settings)
 	if err != nil {
 		panic(err)
 	}

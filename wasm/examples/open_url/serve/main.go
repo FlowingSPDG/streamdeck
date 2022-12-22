@@ -7,7 +7,9 @@ import (
 
 func main() {
 	port := "8080"
-	log.Printf("listen on http://localhost:%s", port)
-	http.Handle("/", http.FileServer(http.Dir("./dev.flowingspdg.wasm.sdPlugin")))
+	log.Println("listen on http://localhost:", port)
+	dir := "./dev.flowingspdg.wasm.sdPlugin/pi"
+	log.Println("Serving on :", dir)
+	http.Handle("/", http.FileServer(http.Dir(dir)))
 	http.ListenAndServe(":"+port, nil)
 }

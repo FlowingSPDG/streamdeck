@@ -15,10 +15,11 @@ import (
 // sdClientJSのJS wrapper
 type sdClientJS[SettingsT Settings] struct {
 	c *SDClient[SettingsT]
+	s SettingsT
 }
 
-func newSdClientJS[SettingsT Settings](c *SDClient[SettingsT]) *sdClientJS[SettingsT] {
-	return &sdClientJS[SettingsT]{c: c}
+func newSdClientJS[SettingsT Settings](c *SDClient[SettingsT], s SettingsT) *sdClientJS[SettingsT] {
+	return &sdClientJS[SettingsT]{c: c, s: s}
 }
 
 func (sdj *sdClientJS[SettingsT]) RegisterGlobal(name string) {
@@ -37,8 +38,11 @@ func (sdj *sdClientJS[SettingsT]) RegisterGlobal(name string) {
 }
 
 func (sdj *sdClientJS[SettingsT]) SetSettings(this js.Value, args []js.Value) any {
-	// return sdj.c.SetSettings(context.TODO(), args[0].String())
-	// TODO
+	ctx := context.Background()
+
+	fmt.Println("SetSettings:", sdj.s)
+
+	sdj.c.SetSettings(ctx, sdj.s)
 	return nil
 }
 
@@ -47,7 +51,6 @@ func (sdj *sdClientJS[SettingsT]) GetSettings(this js.Value, args []js.Value) an
 }
 
 func (sdj *sdClientJS[SettingsT]) SetGlobalSettings(this js.Value, args []js.Value) any {
-	// return sdj.c.SetGlobalSettings(context.TODO(), args[0].String())
 	// TODO
 	return nil
 }
@@ -69,7 +72,5 @@ func (sdj *sdClientJS[SettingsT]) LogMessage(this js.Value, args []js.Value) any
 }
 
 func (sdj *sdClientJS[SettingsT]) SendToPlugin(this js.Value, args []js.Value) any {
-	// return sdj.c.SendToPlugin(context.TODO(), args[0].String())
-	// TODO
-	return nil
+	return sdj.c.SendToPlugin(context.TODO(), args[0].String())
 }

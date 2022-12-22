@@ -35,6 +35,7 @@ func (sd *SDClient[SettingsT]) Close() error {
 }
 
 func (sd *SDClient[SettingsT]) send(ctx context.Context, event streamdeck.Event) error {
+	event.Context = sd.uuid
 	sd.sendMutex.Lock()
 	defer sd.sendMutex.Unlock()
 	return wsjson.Write(ctx, sd.c, event)
@@ -71,7 +72,7 @@ func (sd *SDClient[SettingsT]) LogMessage(ctx context.Context, message string) e
 }
 
 // SendToPlugin Send a payload to the plugin.
-func (sd *SDClient[SettingsT]) SendToPlugin(ctx context.Context, payload SettingsT) error {
+func (sd *SDClient[SettingsT]) SendToPlugin(ctx context.Context, payload any) error {
 	return sd.send(ctx, streamdeck.NewEvent(ctx, streamdeck.SendToPlugin, payload))
 }
 
