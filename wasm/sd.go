@@ -23,7 +23,7 @@ type SDClient[SettingsT Settings] struct {
 	// Send Mutex lock
 	sendMutex *sync.Mutex
 
-	// TODO: WSから受信したメッセージからハンドラを起動する
+	// WSから受信したメッセージ起動するハンドラ
 	onDidReceiveSettingsHandler       func(streamdeck.Event)
 	onDidReceiveGlobalSettingsHandler func(streamdeck.Event)
 	onSendToPropertyInspectorHandler  func(streamdeck.Event)

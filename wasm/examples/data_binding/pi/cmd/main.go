@@ -55,8 +55,6 @@ func main() {
 	SD.LogMessage(ctx, msg)
 	fmt.Println(msg)
 
-	// TODO: WebSocket接続時に設定を受信したら構造体に反映する
-
 	// Lock thread
 	select {}
 }

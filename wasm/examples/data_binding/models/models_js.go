@@ -16,7 +16,7 @@ func (s *Settings) GetJSObject() js.Func {
 // OnChange JS's "onchange" event callback.
 func (s *Settings) OnInput() js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
-		// TODO: 受信したeventに対してフィールドを上書きする
+		// 受け取った引数を基にフィールドを上書きする
 		fmt.Println("args:", args)
 
 		id := args[0].String()
