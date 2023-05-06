@@ -9,6 +9,14 @@ const (
 	KeyDown = "keyDown"
 	// KeyUp When the user releases a key, the plugin will receive the keyUp event.
 	KeyUp = "keyUp"
+	// TouchTap When the user touches the display, the plugin will receive the touchTap event.
+	TouchTap = "touchTap"
+	// DialDown When the user presses the encoder down, the plugin will receive the dialDown event (SD+).
+	DialDown = "dialDown"
+	// DialUp When the user releases a pressed encoder, the plugin will receive the dialUp event (SD+).
+	DialUp = "dialUp"
+	// DialRotate When the user rotates the encoder, the plugin will receive the dialRotate event.
+	DialRotate = "dialRotate"
 	// WillAppear When an instance of an action is displayed on the Stream Deck, for example when the hardware is first plugged in, or when a folder containing that action is entered, the plugin will receive a willAppear event.
 	WillAppear = "willAppear"
 	// WillDisappear When an instance of an action ceases to be displayed on Stream Deck, for example when switching profiles or folders, the plugin will receive a willDisappear event.
@@ -50,6 +58,8 @@ const (
 	SetTitle = "setTitle"
 	// SetImage Dynamically change the image displayed by an instance of an action.
 	SetImage = "setImage"
+	// SetFeedback
+	SetFeedback = "setFeedback"
 	// ShowAlert Temporarily show an alert icon on the image displayed by an instance of an action.
 	ShowAlert = "showAlert"
 	// ShowOk Temporarily show an OK checkmark icon on the image displayed by an instance of an action.

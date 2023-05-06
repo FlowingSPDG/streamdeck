@@ -231,6 +231,16 @@ func (client *Client) SetImage(ctx context.Context, base64image string, target T
 	return client.send(ctx, NewEvent(ctx, SetImage, SetImagePayload{Base64Image: base64image, Target: target}))
 }
 
+// SetFeedback The plugin can send a setFeedback event to the Stream Deck application to dynamically change properties of items on the Stream Deck + touch display layout.
+func (client *Client) SetFeedback(ctx context.Context, payload any) error {
+	return client.send(ctx, NewEvent(ctx, SetFeedback, payload))
+}
+
+// SetFeedbackLayout
+func (client *Client) SetFeedbackLayout(ctx context.Context, layout string) error {
+	return client.send(ctx, NewEvent(ctx, SetImage, SetFeedbackLayoutPayload{Layout: layout}))
+}
+
 // ShowAlert Temporarily show an alert icon on the image displayed by an instance of an action.
 func (client *Client) ShowAlert(ctx context.Context) error {
 	return client.send(ctx, NewEvent(ctx, ShowAlert, nil))

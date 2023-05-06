@@ -24,6 +24,10 @@ type SetImagePayload struct {
 	State       int    `json:"state"`
 }
 
+type SetFeedbackLayoutPayload struct {
+	Layout string `json:"layout"`
+}
+
 // SetStatePayload A 0-based integer value representing the state requested.
 type SetStatePayload struct {
 	State int `json:"state"`
@@ -68,6 +72,33 @@ type KeyUpPayload[T any] struct {
 	State            int         `json:"state,omitempty"`
 	UserDesiredState int         `json:"userDesiredState,omitempty"`
 	IsInMultiAction  bool        `json:"isInMultiAction,omitempty"`
+}
+
+// TouchTapPayload A json object
+type TouchTapPayload[T any] struct {
+	Settings    T           `json:"settings,omitempty"`
+	Coordinates Coordinates `json:"coordinates,omitempty"`
+	TapPos      [2]int      `json:"tapPos,omitempty"`
+	Hold        bool        `json:"hold,omitempty"`
+}
+
+type DialDownPayload[T any] struct {
+	Settings    T           `json:"settings,omitempty"`
+	Coordinates Coordinates `json:"coordinates,omitempty"`
+	Controller  string      `json:"controller,omitempty"` // Encoder
+}
+
+type DialUpPayload[T any] struct {
+	Settings    T           `json:"settings,omitempty"`
+	Coordinates Coordinates `json:"coordinates,omitempty"`
+	Controller  string      `json:"controller,omitempty"` // Encoder
+}
+
+type DialRotatePayload[T any] struct {
+	Settings    T           `json:"settings,omitempty"`
+	Coordinates Coordinates `json:"coordinates,omitempty"`
+	Ticks       int         `json:"ticks,omitempty"`
+	Pressed     bool        `json:"pressed,omitempty"`
 }
 
 // WillAppearPayload A json object

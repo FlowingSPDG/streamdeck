@@ -31,7 +31,7 @@ type DeviceSize struct {
 	Rows    int `json:"rows,omitempty"`
 }
 
-// DeviceType Type of device. Possible values are kESDSDKDeviceType_StreamDeck (0), kESDSDKDeviceType_StreamDeckMini (1), kESDSDKDeviceType_StreamDeckXL (2), kESDSDKDeviceType_StreamDeckMobile (3), kESDSDKDeviceType_CorsairGKeys (4), kESDSDKDeviceType_StreamDeckPedal (5) and kESDSDKDeviceType_CorsairVoyager (6).
+// DeviceType Type of device. Possible values are kESDSDKDeviceType_StreamDeck (0), kESDSDKDeviceType_StreamDeckMini (1), kESDSDKDeviceType_StreamDeckXL (2), kESDSDKDeviceType_StreamDeckMobile (3), kESDSDKDeviceType_CorsairGKeys (4), kESDSDKDeviceType_StreamDeckPedal (5) and kESDSDKDeviceType_CorsairVoyager (6), kESDSDKDeviceType_StreamDeckPlus (7).
 type DeviceType int
 
 const (
@@ -49,6 +49,8 @@ const (
 	StreamDeckPedal
 	// CorsairVoyager kESDSDKDeviceType_CorsairVoyager (6)
 	CorsairVoyager
+	// StreamDeckPlus kESDSDKDeviceType_StreamDeckPlus (7)
+	StreamDeckPlus
 )
 
 // NewEvent Generate new event from specified name and payload. payload will be converted to JSON
