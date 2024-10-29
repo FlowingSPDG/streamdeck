@@ -20,5 +20,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mattn/go-tty v0.0.3 // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
+	github.com/puzpuzpuz/xsync/v3 v3.4.0 // indirect
 	golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4 // indirect
 )

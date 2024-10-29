@@ -5,18 +5,19 @@ import (
 	"sync"
 
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
+	"github.com/puzpuzpuz/xsync/v3"
 	"golang.org/x/sync/errgroup"
 )
 
 // Action action instance
 type Action struct {
 	uuid     string
-	handlers eventHandlers
-	contexts contexts
+	handlers *eventHandlers
+	contexts *contexts
 }
 
 type eventHandlers struct {
-	m sync.Map // map[string]eventHandlerSlice
+	m *xsync.MapOf[string, *eventHandlerSlice]
 }
 
 // []EventHandler
@@ -38,16 +39,16 @@ func (e *eventHandlerSlice) Execute(ctx context.Context, client *Client, event E
 
 // map[string]context.Context
 type contexts struct {
-	m sync.Map
+	m *xsync.MapOf[string, context.Context]
 }
 
 func newAction(uuid string) *Action {
 	action := &Action{
 		uuid: uuid,
-		handlers: eventHandlers{
-			m: sync.Map{},
+		handlers: &eventHandlers{
+			m: xsync.NewMapOf[string, *eventHandlerSlice](),
 		},
-		contexts: contexts{m: sync.Map{}},
+		contexts: &contexts{m: xsync.NewMapOf[string, context.Context]()},
 	}
 
 	action.RegisterHandler(WillAppear, func(ctx context.Context, client *Client, event Event) error {
@@ -65,15 +66,10 @@ func newAction(uuid string) *Action {
 
 // RegisterHandler Register event handler to specified event. handlers can be multiple(append slice)
 func (action *Action) RegisterHandler(eventName string, handler EventHandler) {
-	eh := eventHandlerSlice{
+	eh, _ := action.handlers.m.LoadOrStore(eventName, &eventHandlerSlice{
 		mutex: &sync.Mutex{},
 		eh:    []EventHandler{},
-	}
-
-	ehi, loaded := action.handlers.m.LoadOrStore(eventName, eh)
-	if loaded {
-		eh = ehi.(eventHandlerSlice)
-	}
+	})
 
 	eh.mutex.Lock()
 	defer eh.mutex.Unlock()
@@ -84,9 +80,8 @@ func (action *Action) RegisterHandler(eventName string, handler EventHandler) {
 
 // Contexts get contexts
 func (action *Action) Contexts() []context.Context {
-	cs := make([]context.Context, 0) // 0 length/capacity
-	action.contexts.m.Range(func(key, value any) bool {
-		v := value.(context.Context)
+	cs := make([]context.Context, 0, action.contexts.m.Size())
+	action.contexts.m.Range(func(key string, v context.Context) bool {
 		cs = append(cs, v)
 		return true
 	})

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
+	"github.com/puzpuzpuz/xsync/v3"
 
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wsjson"
@@ -35,15 +36,14 @@ type Client struct {
 	ctx       context.Context
 	params    RegistrationParams
 	c         *websocket.Conn
-	actions   actions
-	handlers  eventHandlers
+	actions   *actions
+	handlers  *eventHandlers
 	done      chan struct{}
-	sendMutex sync.Mutex
+	sendMutex *sync.Mutex
 }
 
-// map[string]*Action
 type actions struct {
-	m sync.Map
+	m *xsync.MapOf[string, *Action]
 }
 
 // NewClient Get new client from specified context/params. you can specify "os.Args".
@@ -52,14 +52,14 @@ func NewClient(ctx context.Context, params RegistrationParams) *Client {
 		ctx:    ctx,
 		params: params,
 		c:      nil,
-		actions: actions{
-			m: sync.Map{},
+		actions: &actions{
+			m: xsync.NewMapOf[string, *Action](),
 		},
-		handlers: eventHandlers{
-			m: sync.Map{},
+		handlers: &eventHandlers{
+			m: xsync.NewMapOf[string, *eventHandlerSlice](),
 		},
 		done:      make(chan struct{}),
-		sendMutex: sync.Mutex{},
+		sendMutex: &sync.Mutex{},
 	}
 }
 
@@ -71,27 +71,22 @@ func (client *Client) UUID() string {
 // Action Get action from uuid.
 func (client *Client) Action(uuid string) *Action {
 	v := newAction(uuid)
-	val, ok := client.actions.m.LoadOrStore(uuid, v)
+	ok := false
+
+	v, ok = client.actions.m.LoadOrStore(uuid, v)
 	if !ok {
 		v = newAction(uuid)
 		client.actions.m.Store(uuid, v)
-	} else {
-		v = val.(*Action)
 	}
 	return v
 }
 
 // RegisterNoActionHandler register event handler with no action such as "applicationDidLaunch".
 func (client *Client) RegisterNoActionHandler(eventName string, handler EventHandler) {
-	eh := eventHandlerSlice{
+	eh, _ := client.handlers.m.LoadOrStore(eventName, &eventHandlerSlice{
 		mutex: &sync.Mutex{},
 		eh:    []EventHandler{},
-	}
-
-	ehi, loaded := client.handlers.m.LoadOrStore(eventName, eh)
-	if loaded {
-		eh = ehi.(eventHandlerSlice)
-	}
+	})
 
 	eh.mutex.Lock()
 	defer eh.mutex.Unlock()
@@ -135,25 +130,21 @@ func (client *Client) Run(ctx context.Context) error {
 			ctx = sdcontext.WithAction(ctx, event.Action)
 
 			if event.Action == "" {
-				v, ok := client.handlers.m.Load(event.Event)
+				eh, ok := client.handlers.m.Load(event.Event)
 				if ok {
-					eh := v.(eventHandlerSlice)
 					eh.Execute(ctx, client, event)
 				}
 				continue
 			}
 
-			var action *Action
-			a, ok := client.actions.m.Load(event.Action)
+			action, ok := client.actions.m.Load(event.Action)
 			if !ok {
 				action = client.Action(event.Action)
 				action.addContext(ctx)
-			} else {
-				action = a.(*Action)
 			}
-			v, ok := action.handlers.m.Load(event.Event)
+
+			eh, ok := action.handlers.m.Load(event.Event)
 			if ok {
-				eh := v.(eventHandlerSlice)
 				eh.Execute(ctx, client, event)
 			}
 		}
