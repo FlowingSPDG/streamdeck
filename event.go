@@ -51,6 +51,12 @@ const (
 	CorsairVoyager
 	// StreamDeckPlus kESDSDKDeviceType_StreamDeckPlus (7)
 	StreamDeckPlus
+	// SCUFController kESDSDKDeviceType_SCUFController (8)
+	SCUFController
+	// StreamDeckNeo kESDSDKDeviceType_StreamDeckNeo (9)
+	StreamDeckNeo
+	// StreamDeck Studio...?
+	StreamDeckStudio
 )
 
 // NewEvent Generate new event from specified name and payload. payload will be converted to JSON

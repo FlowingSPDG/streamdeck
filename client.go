@@ -182,22 +182,29 @@ func (client *Client) send(ctx context.Context, event Event) error {
 
 // SetSettings Save data persistently for the action's instance.
 func (client *Client) SetSettings(ctx context.Context, settings any) error {
-	return client.send(ctx, NewEvent(ctx, SetSettings, settings))
+	return client.send(ctx, NewEvent(ctx, SetSettings, SetSettingsPayload[any]{
+		Context:  sdcontext.Context(ctx),
+		Settings: settings,
+	}))
 }
 
 // GetSettings Request the persistent data for the action's instance.
 func (client *Client) GetSettings(ctx context.Context) error {
-	return client.send(ctx, NewEvent(ctx, GetSettings, nil))
+	return client.send(ctx, NewEvent(ctx, GetSettings, GetSettingsPayload{
+		Context: sdcontext.Context(ctx),
+	}))
 }
 
 // SetGlobalSettings Save data securely and globally for the plugin.
 func (client *Client) SetGlobalSettings(ctx context.Context, settings any) error {
-	return client.send(ctx, NewEvent(ctx, SetGlobalSettings, settings))
+	return client.send(ctx, NewEvent(ctx, SetGlobalSettings, SetGlobalSettingsPayload[any]{
+		Settings: settings,
+	}))
 }
 
 // GetGlobalSettings Request the global persistent data
 func (client *Client) GetGlobalSettings(ctx context.Context) error {
-	return client.send(ctx, NewEvent(ctx, GetGlobalSettings, nil))
+	return client.send(ctx, NewEvent(ctx, GetGlobalSettings, GetGlobalSettingsPayload{}))
 }
 
 // OpenURL Open an URL in the default browser.
@@ -252,12 +259,27 @@ func (client *Client) SwitchToProfile(ctx context.Context, profile string) error
 
 // SendToPropertyInspector Send a payload to the Property Inspector.
 func (client *Client) SendToPropertyInspector(ctx context.Context, payload any) error {
-	return client.send(ctx, NewEvent(ctx, SendToPropertyInspector, payload))
+	p, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	return client.send(ctx, NewEvent(ctx, SendToPropertyInspector, SendToPropertyInspectorPayload[any]{
+		Context: sdcontext.Context(ctx),
+		Payload: p,
+	}))
 }
 
 // SendToPlugin Send a payload to the plugin.
-func (client *Client) SendToPlugin(ctx context.Context, payload any) error {
-	return client.send(ctx, NewEvent(ctx, SendToPlugin, payload))
+func (client *Client) SendToPlugin(ctx context.Context, action string, payload any) error {
+	p, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	return client.send(ctx, NewEvent(ctx, SendToPlugin, SendToPluginPayload[any]{
+		Context: sdcontext.Context(ctx),
+		Action:  action,
+		Payload: p,
+	}))
 }
 
 // Close close client

@@ -41,6 +41,8 @@ const (
 	SendToPlugin = "sendToPlugin"
 	// SendToPropertyInspector Event received by the Property Inspector when the plugin uses the sendToPropertyInspector event.
 	SendToPropertyInspector = "sendToPropertyInspector"
+	// DidReceiveDeepLink Event received when a deep link is activated
+	DidReceiveDeepLink = "didReceiveDeepLink"
 
 	// SetSettings Save data persistently for the action's instance.
 	SetSettings = "setSettings"
