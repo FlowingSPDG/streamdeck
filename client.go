@@ -259,26 +259,18 @@ func (client *Client) SwitchToProfile(ctx context.Context, profile string) error
 
 // SendToPropertyInspector Send a payload to the Property Inspector.
 func (client *Client) SendToPropertyInspector(ctx context.Context, payload any) error {
-	p, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
 	return client.send(ctx, NewEvent(ctx, SendToPropertyInspector, SendToPropertyInspectorPayload[any]{
 		Context: sdcontext.Context(ctx),
-		Payload: p,
+		Payload: payload,
 	}))
 }
 
 // SendToPlugin Send a payload to the plugin.
 func (client *Client) SendToPlugin(ctx context.Context, action string, payload any) error {
-	p, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
 	return client.send(ctx, NewEvent(ctx, SendToPlugin, SendToPluginPayload[any]{
 		Context: sdcontext.Context(ctx),
 		Action:  action,
-		Payload: p,
+		Payload: payload,
 	}))
 }
 
