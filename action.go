@@ -2,11 +2,11 @@ package streamdeck
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
 	"github.com/puzpuzpuz/xsync/v3"
-	"golang.org/x/sync/errgroup"
 )
 
 // Action action instance
@@ -27,14 +27,20 @@ type eventHandlerSlice struct {
 }
 
 func (e *eventHandlerSlice) Execute(ctx context.Context, client *Client, event Event) error {
-	eg, ectx := errgroup.WithContext(ctx)
+	wg := sync.WaitGroup{}
 	for _, handler := range e.eh {
 		h := handler
-		eg.Go(func() error {
-			return h(ectx, client, event)
-		})
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := h(ctx, client, event); err != nil {
+				msg := fmt.Sprintf("Error in event handler: %s", err)
+				client.LogMessage(ctx, msg)
+			}
+		}()
 	}
-	return eg.Wait()
+	wg.Wait()
+	return nil
 }
 
 // map[string]context.Context

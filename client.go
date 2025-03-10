@@ -33,7 +33,6 @@ type EventHandler func(ctx context.Context, client *Client, event Event) error
 
 // Client StreamDeck communicating client
 type Client struct {
-	ctx       context.Context
 	params    RegistrationParams
 	c         *websocket.Conn
 	actions   *actions
@@ -49,7 +48,6 @@ type actions struct {
 // NewClient Get new client from specified context/params. you can specify "os.Args".
 func NewClient(ctx context.Context, params RegistrationParams) *Client {
 	return &Client{
-		ctx:    ctx,
 		params: params,
 		c:      nil,
 		actions: &actions{
@@ -125,7 +123,7 @@ func (client *Client) Run(ctx context.Context) error {
 
 			logger.Println("recv: ", string(message))
 
-			ctx := sdcontext.WithContext(client.ctx, event.Context)
+			ctx := sdcontext.WithContext(ctx, event.Context)
 			ctx = sdcontext.WithDevice(ctx, event.Device)
 			ctx = sdcontext.WithAction(ctx, event.Action)
 
@@ -209,7 +207,7 @@ func (client *Client) OpenURL(ctx context.Context, u url.URL) error {
 
 // LogMessage Write a debug log to the logs file.
 func (client *Client) LogMessage(ctx context.Context, message string) error {
-	return client.send(ctx, NewEvent(nil, LogMessage, LogMessagePayload{Message: message}))
+	return client.send(ctx, NewEvent(ctx, LogMessage, LogMessagePayload{Message: message}))
 }
 
 // SetTitle Dynamically change the title of an instance of an action.
