@@ -13,10 +13,10 @@ import (
 	"time"
 
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 	"github.com/puzpuzpuz/xsync/v3"
-
-	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wsjson"
+	"golang.org/x/xerrors"
 )
 
 var (
@@ -32,6 +32,9 @@ func Log() *log.Logger {
 type EventHandler func(ctx context.Context, client *Client, event Event) error
 
 // Client StreamDeck communicating client
+// Provides a high-level interface for communicating with the Stream Deck software
+// through WebSocket connection. Handles event registration, message sending,
+// and connection management.
 type Client struct {
 	params    RegistrationParams
 	c         *websocket.Conn
@@ -101,7 +104,7 @@ func (client *Client) Run(ctx context.Context) error {
 	u := url.URL{Scheme: "ws", Host: fmt.Sprintf("127.0.0.1:%d", client.params.Port)}
 	c, _, err := websocket.Dial(ctx, u.String(), nil)
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to connect to StreamDeck: %w", err)
 	}
 
 	client.c = c
@@ -149,7 +152,7 @@ func (client *Client) Run(ctx context.Context) error {
 	}()
 
 	if err := client.register(ctx, client.params); err != nil {
-		return err
+		return xerrors.Errorf("failed to register with StreamDeck: %w", err)
 	}
 
 	select {
@@ -169,7 +172,7 @@ func (client *Client) IsConnected() bool {
 func (client *Client) register(ctx context.Context, params RegistrationParams) error {
 	if err := client.send(ctx, Event{UUID: params.PluginUUID, Event: params.RegisterEvent}); err != nil {
 		client.Close()
-		return err
+		return xerrors.Errorf("failed to send registration event: %w", err)
 	}
 	return nil
 }
@@ -177,7 +180,12 @@ func (client *Client) register(ctx context.Context, params RegistrationParams) e
 func (client *Client) send(ctx context.Context, event Event) error {
 	client.sendMutex.Lock()
 	defer client.sendMutex.Unlock()
-	return wsjson.Write(ctx, client.c, event)
+
+	// WebSocketでJSON送信
+	if err := wsjson.Write(ctx, client.c, event); err != nil {
+		return xerrors.Errorf("%w: %v", ErrWriteFailed, err)
+	}
+	return nil
 }
 
 // SetSettings Save data persistently for the action's instance.
@@ -211,13 +219,21 @@ func (client *Client) LogMessage(ctx context.Context, message string) error {
 }
 
 // SetTitle Dynamically change the title of an instance of an action.
-func (client *Client) SetTitle(ctx context.Context, title string, target Target) error {
-	return client.send(ctx, NewEvent(ctx, SetTitle, SetTitlePayload{Title: title, Target: target}))
+func (client *Client) SetTitle(ctx context.Context, title string, target Target, state ...int) error {
+	payload := SetTitlePayload{Title: title, Target: target}
+	if len(state) > 0 {
+		payload.State = state[0]
+	}
+	return client.send(ctx, NewEvent(ctx, SetTitle, payload))
 }
 
 // SetImage Dynamically change the image displayed by an instance of an action.
-func (client *Client) SetImage(ctx context.Context, base64image string, target Target) error {
-	return client.send(ctx, NewEvent(ctx, SetImage, SetImagePayload{Base64Image: base64image, Target: target}))
+func (client *Client) SetImage(ctx context.Context, base64image string, target Target, state ...int) error {
+	payload := SetImagePayload{Base64Image: base64image, Target: target}
+	if len(state) > 0 {
+		payload.State = state[0]
+	}
+	return client.send(ctx, NewEvent(ctx, SetImage, payload))
 }
 
 // SetFeedback The plugin can send a setFeedback event to the Stream Deck application to dynamically change properties of items on the Stream Deck + touch display layout.
@@ -225,9 +241,14 @@ func (client *Client) SetFeedback(ctx context.Context, payload any) error {
 	return client.send(ctx, NewEvent(ctx, SetFeedback, payload))
 }
 
-// SetFeedbackLayout
+// SetFeedbackLayout Sets the layout associated with an action instance.
 func (client *Client) SetFeedbackLayout(ctx context.Context, layout string) error {
-	return client.send(ctx, NewEvent(ctx, SetImage, SetFeedbackLayoutPayload{Layout: layout}))
+	return client.send(ctx, NewEvent(ctx, SetFeedbackLayout, SetFeedbackLayoutPayload{Layout: layout}))
+}
+
+// SetTriggerDescription Sets the trigger descriptions associated with an encoder action instance.
+func (client *Client) SetTriggerDescription(ctx context.Context, payload SetTriggerDescriptionPayload) error {
+	return client.send(ctx, NewEvent(ctx, SetTriggerDescription, payload))
 }
 
 // ShowAlert Temporarily show an alert icon on the image displayed by an instance of an action.
@@ -246,8 +267,12 @@ func (client *Client) SetState(ctx context.Context, state int) error {
 }
 
 // SwitchToProfile Switch to one of the preconfigured read-only profiles.
-func (client *Client) SwitchToProfile(ctx context.Context, profile string) error {
-	return client.send(ctx, NewEvent(ctx, SwitchToProfile, SwitchProfilePayload{Profile: profile}))
+func (client *Client) SwitchToProfile(ctx context.Context, profile string, page ...int) error {
+	payload := SwitchProfilePayload{Profile: profile}
+	if len(page) > 0 {
+		payload.Page = page[0]
+	}
+	return client.send(ctx, NewEvent(ctx, SwitchToProfile, payload))
 }
 
 // SendToPropertyInspector Send a payload to the Property Inspector.

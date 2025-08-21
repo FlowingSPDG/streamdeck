@@ -26,21 +26,22 @@ type eventHandlerSlice struct {
 	eh    []EventHandler
 }
 
+// Execute executes all registered event handlers for this event type.
+// Handlers are executed sequentially to avoid race conditions.
 func (e *eventHandlerSlice) Execute(ctx context.Context, client *Client, event Event) error {
-	wg := sync.WaitGroup{}
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
+	var lastErr error
 	for _, handler := range e.eh {
-		h := handler
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := h(ctx, client, event); err != nil {
-				msg := fmt.Sprintf("Error in event handler: %s", err)
-				client.LogMessage(ctx, msg)
-			}
-		}()
+		if err := handler(ctx, client, event); err != nil {
+			lastErr = err
+			// Log error but continue executing other handlers
+			msg := fmt.Sprintf("Error in event handler: %s", err)
+			client.LogMessage(ctx, msg)
+		}
 	}
-	wg.Wait()
-	return nil
+	return lastErr
 }
 
 // map[string]context.Context

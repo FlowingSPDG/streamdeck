@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"image"
 	"image/color"
 	"os"
@@ -42,8 +40,8 @@ func setup(client *streamdeck.Client) {
 	settings := make(map[string]Settings)
 
 	action.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		p := streamdeck.WillAppearPayload[Settings]{}
-		if err := json.Unmarshal(event.Payload, &p); err != nil {
+		var p streamdeck.WillAppearPayload[Settings]
+		if err := event.UnmarshalPayload(&p); err != nil {
 			return err
 		}
 
@@ -72,9 +70,14 @@ func setup(client *streamdeck.Client) {
 	})
 
 	action.RegisterHandler(streamdeck.KeyDown, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		var p streamdeck.KeyDownPayload[Settings]
+		if err := event.UnmarshalPayload(&p); err != nil {
+			return err
+		}
+
 		s, ok := settings[event.Context]
 		if !ok {
-			return fmt.Errorf("couldn't find settings for context %v", event.Context)
+			return streamdeck.ErrSettingsNotFound
 		}
 
 		s.Counter++
