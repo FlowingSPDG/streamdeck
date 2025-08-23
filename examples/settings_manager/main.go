@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/FlowingSPDG/streamdeck"
+	sdcontext "github.com/FlowingSPDG/streamdeck/context"
 	"github.com/puzpuzpuz/xsync/v3"
 )
 
@@ -20,6 +21,22 @@ type Settings struct {
 	ButtonText    string `json:"buttonText"`
 	Color         string `json:"color"`
 	AutoIncrement bool   `json:"autoIncrement"`
+}
+
+// PropertyInspectorMessage Property Inspectorからのメッセージ構造体
+type PropertyInspectorMessage struct {
+	Action string `json:"action"`
+}
+
+// AllStatesResponse 全ボタン状態の応答構造体
+type AllStatesResponse struct {
+	Action string                 `json:"action"`
+	States map[string]ButtonState `json:"states"`
+}
+
+// ResetCompleteResponse リセット完了応答構造体
+type ResetCompleteResponse struct {
+	Action string `json:"action"`
 }
 
 // ButtonState ボタンの状態を表す構造体
@@ -171,12 +188,8 @@ func run(ctx context.Context) error {
 func setup(client *streamdeck.Client, sm *SettingsManager) {
 	action := client.Action("dev.samwho.streamdeck.settings_manager")
 
-	action.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		var p streamdeck.WillAppearPayload[Settings]
-		if err := event.UnmarshalPayload(&p); err != nil {
-			return fmt.Errorf("failed to unmarshal WillAppear payload: %w", err)
-		}
-
+	// 新しい型安全なAPIを使用
+	streamdeck.OnWillAppear(action, func(ctx context.Context, client *streamdeck.Client, p streamdeck.WillAppearPayload[Settings]) error {
 		// デフォルト設定
 		if p.Settings.ButtonText == "" {
 			p.Settings.ButtonText = "Click Me"
@@ -186,7 +199,7 @@ func setup(client *streamdeck.Client, sm *SettingsManager) {
 		}
 
 		// ボタン状態を保存
-		sm.UpdateButtonState(event.Context, p.Settings)
+		sm.UpdateButtonState(sdcontext.Context(ctx), p.Settings)
 
 		// 背景画像を設定
 		bg, err := streamdeck.Image(createBackground(p.Settings.Color))
@@ -203,31 +216,21 @@ func setup(client *streamdeck.Client, sm *SettingsManager) {
 		return client.SetTitle(ctx, title, streamdeck.HardwareAndSoftware)
 	})
 
-	action.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		var p streamdeck.WillDisappearPayload[Settings]
-		if err := event.UnmarshalPayload(&p); err != nil {
-			return fmt.Errorf("failed to unmarshal WillDisappear payload: %w", err)
-		}
-
+	streamdeck.OnWillDisappear(action, func(ctx context.Context, client *streamdeck.Client, p streamdeck.WillDisappearPayload[Settings]) error {
 		// ボタン状態を削除
-		sm.DeleteButtonState(event.Context)
+		sm.DeleteButtonState(sdcontext.Context(ctx))
 
 		// カウンターをリセット
 		p.Settings.Counter = 0
 		return client.SetSettings(ctx, p.Settings)
 	})
 
-	action.RegisterHandler(streamdeck.KeyDown, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		var p streamdeck.KeyDownPayload[Settings]
-		if err := event.UnmarshalPayload(&p); err != nil {
-			return fmt.Errorf("failed to unmarshal KeyDown payload: %w", err)
-		}
-
+	streamdeck.OnKeyDown(action, func(ctx context.Context, client *streamdeck.Client, p streamdeck.KeyDownPayload[Settings]) error {
 		// カウンターをインクリメント
 		p.Settings.Counter++
 
 		// ボタン状態を更新
-		sm.UpdateButtonState(event.Context, p.Settings)
+		sm.UpdateButtonState(sdcontext.Context(ctx), p.Settings)
 
 		// 設定を保存
 		if err := client.SetSettings(ctx, p.Settings); err != nil {
@@ -239,14 +242,9 @@ func setup(client *streamdeck.Client, sm *SettingsManager) {
 		return client.SetTitle(ctx, title, streamdeck.HardwareAndSoftware)
 	})
 
-	action.RegisterHandler(streamdeck.DidReceiveSettings, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		var p streamdeck.DidReceiveSettingsPayload[Settings]
-		if err := event.UnmarshalPayload(&p); err != nil {
-			return fmt.Errorf("failed to unmarshal DidReceiveSettings payload: %w", err)
-		}
-
+	streamdeck.OnDidReceiveSettings(action, func(ctx context.Context, client *streamdeck.Client, p streamdeck.DidReceiveSettingsPayload[Settings]) error {
 		// ボタン状態を更新
-		sm.UpdateButtonState(event.Context, p.Settings)
+		sm.UpdateButtonState(sdcontext.Context(ctx), p.Settings)
 
 		// 背景画像を更新
 		bg, err := streamdeck.Image(createBackground(p.Settings.Color))
@@ -263,33 +261,26 @@ func setup(client *streamdeck.Client, sm *SettingsManager) {
 		return client.SetTitle(ctx, title, streamdeck.HardwareAndSoftware)
 	})
 
-	action.RegisterHandler(streamdeck.SendToPlugin, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		var payload map[string]interface{}
-		if err := event.UnmarshalPayload(&payload); err != nil {
-			return fmt.Errorf("failed to unmarshal SendToPlugin payload: %w", err)
-		}
-
+	streamdeck.OnSendToPlugin(action, func(ctx context.Context, client *streamdeck.Client, payload PropertyInspectorMessage) error {
 		// Property Inspectorからのメッセージを処理
-		if action, ok := payload["action"].(string); ok {
-			switch action {
-			case "getAllStates":
-				// 全てのボタン状態をProperty Inspectorに送信
-				states := sm.GetAllButtonStates()
-				return client.SendToPropertyInspector(ctx, map[string]interface{}{
-					"action": "allStates",
-					"states": states,
-				})
-			case "resetAll":
-				// 全てのボタンのカウンターをリセット
-				sm.buttonStates.Range(func(key string, value ButtonState) bool {
-					value.Settings.Counter = 0
-					sm.StoreButtonState(key, value)
-					return true
-				})
-				return client.SendToPropertyInspector(ctx, map[string]interface{}{
-					"action": "resetComplete",
-				})
-			}
+		switch payload.Action {
+		case "getAllStates":
+			// 全てのボタン状態をProperty Inspectorに送信
+			states := sm.GetAllButtonStates()
+			return client.SendToPropertyInspector(ctx, AllStatesResponse{
+				Action: "allStates",
+				States: states,
+			})
+		case "resetAll":
+			// 全てのボタンのカウンターをリセット
+			sm.buttonStates.Range(func(key string, value ButtonState) bool {
+				value.Settings.Counter = 0
+				sm.StoreButtonState(key, value)
+				return true
+			})
+			return client.SendToPropertyInspector(ctx, ResetCompleteResponse{
+				Action: "resetComplete",
+			})
 		}
 
 		return nil

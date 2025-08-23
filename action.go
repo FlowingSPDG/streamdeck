@@ -16,6 +16,9 @@ type Action struct {
 	contexts *contexts
 }
 
+// TypedEventHandler is a type-safe event handler that automatically unmarshals the payload
+type TypedEventHandler[T any] func(ctx context.Context, client *Client, payload T) error
+
 type eventHandlers struct {
 	m *xsync.MapOf[string, *eventHandlerSlice]
 }
@@ -83,6 +86,84 @@ func (action *Action) RegisterHandler(eventName string, handler EventHandler) {
 	eh.eh = append(eh.eh, handler)
 
 	action.handlers.m.Store(eventName, eh)
+}
+
+// RegisterTypedHandler registers a type-safe event handler that automatically unmarshals the payload
+func RegisterTypedHandler[T any](action *Action, eventName string, handler TypedEventHandler[T]) {
+	action.RegisterHandler(eventName, func(ctx context.Context, client *Client, event Event) error {
+		var payload T
+		if err := event.UnmarshalPayload(&payload); err != nil {
+			return fmt.Errorf("failed to unmarshal %s payload: %w", eventName, err)
+		}
+		return handler(ctx, client, payload)
+	})
+}
+
+// Event-specific typed handler functions
+
+// OnWillAppear registers a type-safe WillAppear event handler
+func OnWillAppear[T any](action *Action, handler TypedEventHandler[WillAppearPayload[T]]) {
+	RegisterTypedHandler(action, WillAppear, handler)
+}
+
+// OnWillDisappear registers a type-safe WillDisappear event handler
+func OnWillDisappear[T any](action *Action, handler TypedEventHandler[WillDisappearPayload[T]]) {
+	RegisterTypedHandler(action, WillDisappear, handler)
+}
+
+// OnKeyDown registers a type-safe KeyDown event handler
+func OnKeyDown[T any](action *Action, handler TypedEventHandler[KeyDownPayload[T]]) {
+	RegisterTypedHandler(action, KeyDown, handler)
+}
+
+// OnKeyUp registers a type-safe KeyUp event handler
+func OnKeyUp[T any](action *Action, handler TypedEventHandler[KeyUpPayload[T]]) {
+	RegisterTypedHandler(action, KeyUp, handler)
+}
+
+// OnDidReceiveSettings registers a type-safe DidReceiveSettings event handler
+func OnDidReceiveSettings[T any](action *Action, handler TypedEventHandler[DidReceiveSettingsPayload[T]]) {
+	RegisterTypedHandler(action, DidReceiveSettings, handler)
+}
+
+// OnTouchTap registers a type-safe TouchTap event handler
+func OnTouchTap[T any](action *Action, handler TypedEventHandler[TouchTapPayload[T]]) {
+	RegisterTypedHandler(action, TouchTap, handler)
+}
+
+// OnDialDown registers a type-safe DialDown event handler
+func OnDialDown[T any](action *Action, handler TypedEventHandler[DialDownPayload[T]]) {
+	RegisterTypedHandler(action, DialDown, handler)
+}
+
+// OnDialUp registers a type-safe DialUp event handler
+func OnDialUp[T any](action *Action, handler TypedEventHandler[DialUpPayload[T]]) {
+	RegisterTypedHandler(action, DialUp, handler)
+}
+
+// OnDialRotate registers a type-safe DialRotate event handler
+func OnDialRotate[T any](action *Action, handler TypedEventHandler[DialRotatePayload[T]]) {
+	RegisterTypedHandler(action, DialRotate, handler)
+}
+
+// OnPropertyInspectorDidAppear registers a type-safe PropertyInspectorDidAppear event handler
+func OnPropertyInspectorDidAppear[T any](action *Action, handler TypedEventHandler[PropertyInspectorDidAppearPayload[T]]) {
+	RegisterTypedHandler(action, PropertyInspectorDidAppear, handler)
+}
+
+// OnPropertyInspectorDidDisappear registers a type-safe PropertyInspectorDidDisappear event handler
+func OnPropertyInspectorDidDisappear[T any](action *Action, handler TypedEventHandler[PropertyInspectorDidDisappearPayload[T]]) {
+	RegisterTypedHandler(action, PropertyInspectorDidDisappear, handler)
+}
+
+// OnDidReceivePropertyInspectorMessage registers a type-safe DidReceivePropertyInspectorMessage event handler
+func OnDidReceivePropertyInspectorMessage[T any](action *Action, handler TypedEventHandler[DidReceivePropertyInspectorMessagePayload[T]]) {
+	RegisterTypedHandler(action, DidReceivePropertyInspectorMessage, handler)
+}
+
+// OnSendToPlugin registers a type-safe SendToPlugin event handler
+func OnSendToPlugin[T any](action *Action, handler TypedEventHandler[T]) {
+	RegisterTypedHandler(action, SendToPlugin, handler)
 }
 
 // Contexts get contexts

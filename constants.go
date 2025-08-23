@@ -43,6 +43,8 @@ const (
 	SendToPlugin = "sendToPlugin"
 	// SendToPropertyInspector Event received by the Property Inspector when the plugin uses the sendToPropertyInspector event.
 	SendToPropertyInspector = "sendToPropertyInspector"
+	// DidReceivePropertyInspectorMessage Event received by the plugin when the Property Inspector uses the sendToPlugin event.
+	DidReceivePropertyInspectorMessage = "didReceivePropertyInspectorMessage"
 	// DidReceiveDeepLink Event received when a deep link is activated
 	DidReceiveDeepLink = "didReceiveDeepLink"
 
