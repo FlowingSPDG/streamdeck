@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
+	"golang.org/x/xerrors"
 )
 
 // Event JSON struct. {"action":"com.elgato.example.action1","event":"keyDown","context":"","device":"","payload":{"settings":{},"coordinates":{"column":3,"row":1},"state":0,"userDesiredState":1,"isInMultiAction":false}}
@@ -124,7 +125,7 @@ func ToTypedEvent[T any](e Event) (TypedEvent[T], error) {
 
 	// Unmarshal payload
 	if err := e.UnmarshalPayload(&typedEvent.Payload); err != nil {
-		return TypedEvent[T]{}, fmt.Errorf("failed to unmarshal payload: %w", err)
+		return TypedEvent[T]{}, xerrors.Errorf("failed to unmarshal payload: %w", err)
 	}
 
 	return typedEvent, nil

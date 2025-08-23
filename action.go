@@ -7,6 +7,7 @@ import (
 
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
 	"github.com/puzpuzpuz/xsync/v3"
+	"golang.org/x/xerrors"
 )
 
 // Action action instance
@@ -93,7 +94,7 @@ func RegisterTypedHandler[T any](action *Action, eventName string, handler Typed
 	action.RegisterHandler(eventName, func(ctx context.Context, client *Client, event Event) error {
 		var payload T
 		if err := event.UnmarshalPayload(&payload); err != nil {
-			return fmt.Errorf("failed to unmarshal %s payload: %w", eventName, err)
+			return xerrors.Errorf("failed to unmarshal %s payload: %w", eventName, err)
 		}
 		return handler(ctx, client, payload)
 	})

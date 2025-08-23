@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/FlowingSPDG/streamdeck"
+	"golang.org/x/xerrors"
 )
 
 // DemoSettings demonstrates the type-safe settings structure
@@ -66,7 +67,7 @@ func setup(client *streamdeck.Client) {
 
 		// Save settings
 		if err := client.SetSettings(ctx, p.Settings); err != nil {
-			return fmt.Errorf("failed to save settings: %w", err)
+			return xerrors.Errorf("failed to save settings: %w", err)
 		}
 
 		// Update title

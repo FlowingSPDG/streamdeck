@@ -13,6 +13,7 @@ import (
 	"github.com/FlowingSPDG/streamdeck"
 	sdcontext "github.com/FlowingSPDG/streamdeck/context"
 	"github.com/puzpuzpuz/xsync/v3"
+	"golang.org/x/xerrors"
 )
 
 // Settings ボタンの設定を表す構造体
@@ -204,11 +205,11 @@ func setup(client *streamdeck.Client, sm *SettingsManager) {
 		// 背景画像を設定
 		bg, err := streamdeck.Image(createBackground(p.Settings.Color))
 		if err != nil {
-			return fmt.Errorf("failed to create background image: %w", err)
+			return xerrors.Errorf("failed to create background image: %w", err)
 		}
 
 		if err := client.SetImage(ctx, bg, streamdeck.HardwareAndSoftware); err != nil {
-			return fmt.Errorf("failed to set image: %w", err)
+			return xerrors.Errorf("failed to set image: %w", err)
 		}
 
 		// タイトルを設定
@@ -234,7 +235,7 @@ func setup(client *streamdeck.Client, sm *SettingsManager) {
 
 		// 設定を保存
 		if err := client.SetSettings(ctx, p.Settings); err != nil {
-			return fmt.Errorf("failed to set settings: %w", err)
+			return xerrors.Errorf("failed to set settings: %w", err)
 		}
 
 		// タイトルを更新
@@ -249,11 +250,10 @@ func setup(client *streamdeck.Client, sm *SettingsManager) {
 		// 背景画像を更新
 		bg, err := streamdeck.Image(createBackground(p.Settings.Color))
 		if err != nil {
-			return fmt.Errorf("failed to create background image: %w", err)
+			return xerrors.Errorf("failed to create background image: %w", err)
 		}
-
 		if err := client.SetImage(ctx, bg, streamdeck.HardwareAndSoftware); err != nil {
-			return fmt.Errorf("failed to set image: %w", err)
+			return xerrors.Errorf("failed to set image: %w", err)
 		}
 
 		// タイトルを更新
