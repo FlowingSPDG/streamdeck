@@ -8,7 +8,7 @@ require (
 	github.com/c-bata/go-prompt v0.2.6
 	github.com/coder/websocket v1.8.13
 	github.com/olahol/melody v1.1.1
-	github.com/puzpuzpuz/xsync/v3 v3.4.0
+	github.com/puzpuzpuz/xsync/v3 v3.5.1
 	github.com/shirou/gopsutil v3.20.12+incompatible
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da
 )

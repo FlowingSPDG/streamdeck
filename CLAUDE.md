@@ -102,7 +102,7 @@ See `examples/counter/main.go` for a complete example:
 
 ## Dependencies
 
-- `nhooyr.io/websocket` - WebSocket client
+- `github.com/coder/websocket` - WebSocket client
 - `github.com/puzpuzpuz/xsync/v3` - Thread-safe maps
 - `github.com/shirou/gopsutil` - System metrics (CPU example)
 - `golang.org/x/sync` - Synchronization primitives

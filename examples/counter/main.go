@@ -35,20 +35,14 @@ func run(ctx context.Context) error {
 
 func setup(client *streamdeck.Client) {
 	action := client.Action("dev.samwho.streamdeck.counter")
-	// This is not goroutine safe
-	// Use sync.Map instead for goroutine safe map
-	settings := make(map[string]Settings)
 
 	action.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
+		// Settings will be passed through the event.
+		// So we don't need to store them internally.
+		// But in case you want to store them, you should store the settings since the settings will appear at this event
 		var p streamdeck.WillAppearPayload[Settings]
 		if err := event.UnmarshalPayload(&p); err != nil {
 			return err
-		}
-
-		s, ok := settings[event.Context]
-		if !ok {
-			s = Settings{}
-			settings[event.Context] = s
 		}
 
 		bg, err := streamdeck.Image(background())
@@ -60,13 +54,20 @@ func setup(client *streamdeck.Client) {
 			return err
 		}
 
-		return client.SetTitle(ctx, strconv.Itoa(s.Counter), streamdeck.HardwareAndSoftware)
+		return client.SetTitle(ctx, strconv.Itoa(p.Settings.Counter), streamdeck.HardwareAndSoftware)
 	})
 
 	action.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		s, _ := settings[event.Context]
-		s.Counter = 0
-		return client.SetSettings(ctx, s)
+		// Settings will be passed through the event.
+		// So we don't need to store them internally.
+		// But in case you want to store them, you should remove the settings since the settings will disappear at this event
+		var p streamdeck.WillDisappearPayload[Settings]
+		if err := event.UnmarshalPayload(&p); err != nil {
+			return err
+		}
+
+		p.Settings.Counter = 0
+		return client.SetSettings(ctx, p.Settings)
 	})
 
 	action.RegisterHandler(streamdeck.KeyDown, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
@@ -75,17 +76,12 @@ func setup(client *streamdeck.Client) {
 			return err
 		}
 
-		s, ok := settings[event.Context]
-		if !ok {
-			return streamdeck.ErrSettingsNotFound
-		}
-
-		s.Counter++
-		if err := client.SetSettings(ctx, s); err != nil {
+		p.Settings.Counter++
+		if err := client.SetSettings(ctx, p.Settings); err != nil {
 			return err
 		}
 
-		return client.SetTitle(ctx, strconv.Itoa(s.Counter), streamdeck.HardwareAndSoftware)
+		return client.SetTitle(ctx, strconv.Itoa(p.Settings.Counter), streamdeck.HardwareAndSoftware)
 	})
 }
 
