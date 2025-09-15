@@ -28,6 +28,19 @@ type SetFeedbackLayoutPayload struct {
 	Layout string `json:"layout"`
 }
 
+// SetTriggerDescriptionPayload Sets the trigger descriptions associated with an encoder action instance.
+type SetTriggerDescriptionPayload struct {
+	LongTouch string `json:"longTouch,omitempty"`
+	Push      string `json:"push,omitempty"`
+	Rotate    string `json:"rotate,omitempty"`
+	Touch     string `json:"touch,omitempty"`
+}
+
+// DeviceDidChangePayload A json object containing information about the device that changed.
+type DeviceDidChangePayload struct {
+	DeviceInfo DeviceInfo `json:"deviceInfo,omitempty"`
+}
+
 // SetStatePayload A 0-based integer value representing the state requested.
 type SetStatePayload struct {
 	State int `json:"state"`
@@ -35,7 +48,8 @@ type SetStatePayload struct {
 
 // SwitchProfilePayload The name of the profile to switch to. The name should be identical to the name provided in the manifest.json file.
 type SwitchProfilePayload struct {
-	Profile string `json:"profile"`
+	Profile string `json:"profile,omitempty"`
+	Page    int    `json:"page,omitempty"`
 }
 
 // DidReceiveSettingsPayload This json object contains persistently stored data.
@@ -145,4 +159,68 @@ type ApplicationDidLaunchPayload struct {
 // ApplicationDidTerminatePayload A json object
 type ApplicationDidTerminatePayload struct {
 	Application string `json:"application,omitempty"`
+}
+
+// SystemDidWakeUpPayload A json object sent when the computer wakes up
+type SystemDidWakeUpPayload struct {
+}
+
+// PropertyInspectorDidAppearPayload A json object sent when the property inspector appears
+type PropertyInspectorDidAppearPayload[T any] struct {
+	Settings        T           `json:"settings,omitempty"`
+	Coordinates     Coordinates `json:"coordinates,omitempty"`
+	State           int         `json:"state,omitempty"`
+	IsInMultiAction bool        `json:"isInMultiAction,omitempty"`
+}
+
+// PropertyInspectorDidDisappearPayload A json object sent when the property inspector disappears
+type PropertyInspectorDidDisappearPayload[T any] struct {
+	Settings        T           `json:"settings,omitempty"`
+	Coordinates     Coordinates `json:"coordinates,omitempty"`
+	State           int         `json:"state,omitempty"`
+	IsInMultiAction bool        `json:"isInMultiAction,omitempty"`
+}
+
+// DidReceiveDeepLinkPayload A json object containing the deep link URL
+type DidReceiveDeepLinkPayload struct {
+	URL string `json:"url,omitempty"`
+}
+
+// DidReceivePropertyInspectorMessagePayload A json object containing the message from the property inspector
+type DidReceivePropertyInspectorMessagePayload[T any] struct {
+	Action  string `json:"action,omitempty"`
+	Message T      `json:"message,omitempty"`
+}
+
+// SendToPluginPayload A json object containing the message to send to the plugin
+type SendToPluginPayload[T any] struct {
+	Context string `json:"context,omitempty"`
+	Action  string `json:"action,omitempty"`
+	Payload T      `json:"payload,omitempty"`
+}
+
+// SendToPropertyInspectorPayload A json object containing the message to send to the property inspector
+type SendToPropertyInspectorPayload[T any] struct {
+	Context string `json:"context,omitempty"`
+	Payload T      `json:"payload,omitempty"`
+}
+
+// GetSettingsPayload A json object to request the persistent data
+type GetSettingsPayload struct {
+	Context string `json:"context,omitempty"`
+}
+
+// SetSettingsPayload A json object containing the persistent data
+type SetSettingsPayload[T any] struct {
+	Context  string `json:"context,omitempty"`
+	Settings T      `json:"settings,omitempty"`
+}
+
+// GetGlobalSettingsPayload A json object to request the global persistent data
+type GetGlobalSettingsPayload struct {
+}
+
+// SetGlobalSettingsPayload A json object containing the global persistent data
+type SetGlobalSettingsPayload[T any] struct {
+	Settings T `json:"settings,omitempty"`
 }

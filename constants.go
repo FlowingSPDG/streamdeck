@@ -27,6 +27,8 @@ const (
 	DeviceDidConnect = "deviceDidConnect"
 	//DeviceDidDisconnect When a device is unplugged from the computer, the plugin will receive a deviceDidDisconnect event.
 	DeviceDidDisconnect = "deviceDidDisconnect"
+	//DeviceDidChange When a Stream Deck device changed, for example its name or size. Available from Stream Deck 7.0.
+	DeviceDidChange = "deviceDidChange"
 	//ApplicationDidLaunch When a monitored application is launched, the plugin will be notified and will receive the applicationDidLaunch event.
 	ApplicationDidLaunch = "applicationDidLaunch"
 	//ApplicationDidTerminate When a monitored application is terminated, the plugin will be notified and will receive the applicationDidTerminate event.
@@ -41,6 +43,10 @@ const (
 	SendToPlugin = "sendToPlugin"
 	// SendToPropertyInspector Event received by the Property Inspector when the plugin uses the sendToPropertyInspector event.
 	SendToPropertyInspector = "sendToPropertyInspector"
+	// DidReceivePropertyInspectorMessage Event received by the plugin when the Property Inspector uses the sendToPlugin event.
+	DidReceivePropertyInspectorMessage = "didReceivePropertyInspectorMessage"
+	// DidReceiveDeepLink Event received when a deep link is activated
+	DidReceiveDeepLink = "didReceiveDeepLink"
 
 	// SetSettings Save data persistently for the action's instance.
 	SetSettings = "setSettings"
@@ -68,6 +74,10 @@ const (
 	SetState = "setState"
 	// SwitchToProfile Switch to one of the preconfigured read-only profiles.
 	SwitchToProfile = "switchToProfile"
+	// SetFeedbackLayout Sets the layout associated with an action instance.
+	SetFeedbackLayout = "setFeedbackLayout"
+	// SetTriggerDescription Sets the trigger descriptions associated with an encoder action instance.
+	SetTriggerDescription = "setTriggerDescription"
 )
 
 // Target Specify if you want to display the title on the hardware and software (0), only on the hardware (1) or only on the software (2). Default is 0.

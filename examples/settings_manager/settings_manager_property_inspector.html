@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Settings Manager Property Inspector</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 10px;
+            background-color: #2d2d2d;
+            color: #ffffff;
+        }
+        .container {
+            max-width: 300px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background-color: #3d3d3d;
+            color: #ffffff;
+            box-sizing: border-box;
+        }
+        input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        button {
+            background-color: #007acc;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #005a9e;
+        }
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #3d3d3d;
+            border-left: 4px solid #007acc;
+        }
+        .states-display {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #3d3d3d;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .state-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background-color: #4d4d4d;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .state-context {
+            font-weight: bold;
+            color: #007acc;
+        }
+        .state-details {
+            margin-top: 5px;
+            color: #cccccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h3>Settings Manager</h3>
+        
+        <div class="form-group">
+            <label for="buttonText">Button Text:</label>
+            <input type="text" id="buttonText" placeholder="Enter button text">
+        </div>
+        
+        <div class="form-group">
+            <label for="color">Background Color:</label>
+            <select id="color">
+                <option value="blue">Blue</option>
+                <option value="red">Red</option>
+                <option value="green">Green</option>
+                <option value="yellow">Yellow</option>
+                <option value="purple">Purple</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="autoIncrement">
+                Auto Increment (every 2 seconds)
+            </label>
+        </div>
+        
+        <div class="form-group">
+            <button id="saveSettings">Save Settings</button>
+            <button id="getAllStates">Get All States</button>
+            <button id="resetAll">Reset All Counters</button>
+        </div>
+        
+        <div class="status" id="status" style="display: none;">
+            <div id="statusMessage"></div>
+        </div>
+        
+        <div class="states-display" id="statesDisplay" style="display: none;">
+            <h4>All Button States:</h4>
+            <div id="statesList"></div>
+        </div>
+    </div>
+
+    <script>
+        let settings = {
+            buttonText: '',
+            color: 'blue',
+            autoIncrement: false
+        };
+
+        // Stream Deck SDK
+        const { streamdeck } = window;
+
+        // Initialize
+        streamdeck.on('didReceiveSettings', (event) => {
+            const payload = event.payload;
+            if (payload.settings) {
+                settings = { ...settings, ...payload.settings };
+                updateForm();
+            }
+        });
+
+        // Form elements
+        const buttonTextInput = document.getElementById('buttonText');
+        const colorSelect = document.getElementById('color');
+        const autoIncrementCheckbox = document.getElementById('autoIncrement');
+        const saveButton = document.getElementById('saveSettings');
+        const getAllStatesButton = document.getElementById('getAllStates');
+        const resetAllButton = document.getElementById('resetAll');
+        const statusDiv = document.getElementById('status');
+        const statusMessage = document.getElementById('statusMessage');
+        const statesDisplay = document.getElementById('statesDisplay');
+        const statesList = document.getElementById('statesList');
+
+        // Event listeners
+        buttonTextInput.addEventListener('input', (e) => {
+            settings.buttonText = e.target.value;
+        });
+
+        colorSelect.addEventListener('change', (e) => {
+            settings.color = e.target.value;
+        });
+
+        autoIncrementCheckbox.addEventListener('change', (e) => {
+            settings.autoIncrement = e.target.checked;
+        });
+
+        saveButton.addEventListener('click', () => {
+            streamdeck.setSettings(settings);
+            showStatus('Settings saved successfully!', 'success');
+        });
+
+        getAllStatesButton.addEventListener('click', () => {
+            streamdeck.sendToPlugin({
+                action: 'getAllStates'
+            });
+        });
+
+        resetAllButton.addEventListener('click', () => {
+            if (confirm('Are you sure you want to reset all counters?')) {
+                streamdeck.sendToPlugin({
+                    action: 'resetAll'
+                });
+            }
+        });
+
+        // Handle messages from plugin
+        streamdeck.on('sendToPropertyInspector', (event) => {
+            const payload = event.payload;
+            
+            if (payload.action === 'allStates') {
+                displayStates(payload.states);
+            } else if (payload.action === 'resetComplete') {
+                showStatus('All counters reset successfully!', 'success');
+            }
+        });
+
+        function updateForm() {
+            buttonTextInput.value = settings.buttonText || '';
+            colorSelect.value = settings.color || 'blue';
+            autoIncrementCheckbox.checked = settings.autoIncrement || false;
+        }
+
+        function showStatus(message, type = 'info') {
+            statusMessage.textContent = message;
+            statusDiv.style.display = 'block';
+            statusDiv.style.borderLeftColor = type === 'success' ? '#28a745' : '#007acc';
+            
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        function displayStates(states) {
+            statesList.innerHTML = '';
+            
+            if (!states || Object.keys(states).length === 0) {
+                statesList.innerHTML = '<div class="state-item">No active buttons found.</div>';
+            } else {
+                Object.entries(states).forEach(([contextId, state]) => {
+                    const stateDiv = document.createElement('div');
+                    stateDiv.className = 'state-item';
+                    stateDiv.innerHTML = `
+                        <div class="state-context">Context: ${contextId.substring(0, 8)}...</div>
+                        <div class="state-details">
+                            Text: ${state.Settings.ButtonText || 'N/A'}<br>
+                            Counter: ${state.Settings.Counter}<br>
+                            Color: ${state.Settings.Color}<br>
+                            Auto Increment: ${state.Settings.AutoIncrement ? 'Yes' : 'No'}<br>
+                            Last Update: ${new Date(state.LastUpdate).toLocaleTimeString()}<br>
+                            Active: ${state.IsActive ? 'Yes' : 'No'}
+                        </div>
+                    `;
+                    statesList.appendChild(stateDiv);
+                });
+            }
+            
+            statesDisplay.style.display = 'block';
+        }
+
+        // Initialize form
+        updateForm();
+    </script>
+</body>
+</html>

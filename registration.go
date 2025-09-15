@@ -3,7 +3,8 @@ package streamdeck
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
+
+	"golang.org/x/xerrors"
 )
 
 // RegistrationParams Params for registering streamdeck plugin.
@@ -84,22 +85,22 @@ func ParseRegistrationParams(args []string) (RegistrationParams, error) {
 	}
 
 	if *port == -1 {
-		return ret, fmt.Errorf("missing -port flag")
+		return ret, xerrors.Errorf("%w", ErrMissingPortFlag)
 	}
 	ret.Port = *port
 
 	if *pluginUUID == "" {
-		return ret, fmt.Errorf("missing -pluginUUID flag")
+		return ret, xerrors.Errorf("%w", ErrMissingPluginUUIDFlag)
 	}
 	ret.PluginUUID = *pluginUUID
 
 	if *registerEvent == "" {
-		return ret, fmt.Errorf("missing -registerEvent flag")
+		return ret, xerrors.Errorf("%w", ErrMissingRegisterEventFlag)
 	}
 	ret.RegisterEvent = *registerEvent
 
 	if *info == "" {
-		return ret, fmt.Errorf("missing -info flag")
+		return ret, xerrors.Errorf("%w", ErrMissingInfoFlag)
 	}
 	infob := []byte(*info)
 	if err := json.Unmarshal(infob, &ret.Info); err != nil {

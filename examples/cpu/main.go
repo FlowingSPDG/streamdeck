@@ -71,19 +71,19 @@ func setup(client *streamdeck.Client) {
 	action.RegisterHandler(streamdeck.SendToPlugin, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		b, _ := json.MarshalIndent(event, "", "	")
 		fmt.Printf("event:%s\n", b)
-		return json.Unmarshal(event.Payload, pi)
+		return event.UnmarshalPayload(pi)
 	})
 
 	action.RegisterHandler(streamdeck.KeyDown, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		b, _ := json.MarshalIndent(event, "", "	")
 		fmt.Printf("event:%s\n", b)
-		return json.Unmarshal(event.Payload, pi)
+		return event.UnmarshalPayload(pi)
 	})
 
 	action.RegisterHandler(streamdeck.KeyUp, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
 		b, _ := json.MarshalIndent(event, "", "	")
 		fmt.Printf("event:%s\n", b)
-		return json.Unmarshal(event.Payload, pi)
+		return event.UnmarshalPayload(pi)
 	})
 
 	action.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
