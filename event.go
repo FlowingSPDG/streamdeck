@@ -44,7 +44,8 @@ type DeviceSize struct {
 	Rows    int `json:"rows,omitempty"`
 }
 
-// DeviceType Type of device. Possible values are kESDSDKDeviceType_StreamDeck (0), kESDSDKDeviceType_StreamDeckMini (1), kESDSDKDeviceType_StreamDeckXL (2), kESDSDKDeviceType_StreamDeckMobile (3), kESDSDKDeviceType_CorsairGKeys (4), kESDSDKDeviceType_StreamDeckPedal (5) and kESDSDKDeviceType_CorsairVoyager (6), kESDSDKDeviceType_StreamDeckPlus (7).
+// DeviceType Type of device.
+// refer to https://github.com/elgatosf/schemas/blob/main/src/streamdeck/plugins/device-type.ts
 type DeviceType int
 
 const (
@@ -68,8 +69,10 @@ const (
 	SCUFController
 	// StreamDeckNeo kESDSDKDeviceType_StreamDeckNeo (9)
 	StreamDeckNeo
-	// StreamDeck Studio...?
+	// StreamDeck Studio (10)
 	StreamDeckStudio
+	// Virtual StreamDeck (11)
+	VirtualStreamDeck
 )
 
 // NewEvent Generate new event from specified name and payload. payload will be stored as raw data
