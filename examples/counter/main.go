@@ -6,7 +6,6 @@ import (
 	"image/color"
 	"log"
 	"os"
-	"os/signal"
 	"strconv"
 
 	"github.com/FlowingSPDG/streamdeck/v2"
@@ -17,9 +16,7 @@ type Settings struct {
 }
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-	if err := run(ctx); err != nil && ctx.Err() == nil {
+	if err := run(context.Background()); err != nil {
 		log.Fatal(err)
 	}
 }

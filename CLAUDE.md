@@ -35,8 +35,7 @@ Example plugins live in `examples/` as a separate module (`examples/go.mod`) wir
 1. `ParseRegistrationParams(os.Args)`
 2. `streamdeck.NewClient(ctx, params, opts...)`
 3. `streamdeck.NewAction[Settings](client, uuid)` and register handlers
-4. Cancel `ctx` yourself (`signal.NotifyContext`). `Run` does not install signal handlers.
-5. `client.Run(ctx)`
+4. `client.Run(ctx)` also listens for `os.Interrupt` (Ctrl+C). Stream Deck sends it on app shutdown and plugin uninstall. Pass a cancellable `ctx` if you need an additional stop switch.
 
 ## Event handling
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"os/signal"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -167,8 +168,14 @@ func (c *Client) OnDidReceiveSecrets[G any](h func(context.Context, G) error) {
 	})
 }
 
-// Run connects to Stream Deck, registers, and dispatches events until ctx is cancelled or the connection ends.
+// Run connects to Stream Deck, registers, and dispatches events until the
+// connection ends or ctx is cancelled. Stream Deck sends os.Interrupt (Ctrl+C)
+// when the app shuts down or the plugin is uninstalled; Run listens for that
+// in addition to ctx.
 func (c *Client) Run(ctx context.Context) error {
+	ctx, stop := signal.NotifyContext(ctx, shutdownSignals()...)
+	defer stop()
+
 	addr := c.dialURL
 	if addr == "" {
 		addr = fmt.Sprintf("ws://127.0.0.1:%d", c.params.Port)
@@ -194,10 +201,13 @@ func (c *Client) Run(ctx context.Context) error {
 	select {
 	case err := <-readErr:
 		c.connected.Store(false)
+		if ctx.Err() != nil {
+			return nil
+		}
 		return err
 	case <-ctx.Done():
 		_ = c.Close()
-		return ctx.Err()
+		return nil
 	}
 }
 

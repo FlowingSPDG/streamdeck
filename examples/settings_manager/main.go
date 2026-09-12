@@ -7,7 +7,6 @@ import (
 	"image/color"
 	"log"
 	"os"
-	"os/signal"
 	"sync"
 	"time"
 
@@ -136,9 +135,7 @@ func (sm *SettingsManager) GetAllButtonStates() map[string]ButtonState {
 }
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-	if err := run(ctx); err != nil && ctx.Err() == nil {
+	if err := run(context.Background()); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -27,7 +27,7 @@ action.OnKeyDown(func(ctx context.Context, e streamdeck.KeyDownEvent[Settings]) 
 
 ## シグナル
 
-`Client.Run` は SIGINT を捕捉しません。呼び出し側で `signal.NotifyContext` を使ってください。キャンセルされると `Run` は `ctx.Err()` を返します。
+`Client.Run` は、渡した `ctx` のキャンセルに加えて `os.Interrupt`（Ctrl+C）を待ちます。Stream Deck はアプリ終了時とプラグイン削除時にこれを送ります。この経路での終了はエラーではなく、`Run` は `nil` を返します。呼び出し側で `signal.NotifyContext` を重ねても問題ありません。
 
 ## 名前が変わったもの
 

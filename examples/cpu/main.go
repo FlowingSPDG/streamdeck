@@ -7,7 +7,6 @@ import (
 	"image/color"
 	"log"
 	"os"
-	"os/signal"
 	"sync"
 	"time"
 
@@ -28,9 +27,7 @@ type PropertyInspectorSettings struct {
 }
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-	if err := run(ctx); err != nil && ctx.Err() == nil {
+	if err := run(context.Background()); err != nil {
 		log.Fatal(err)
 	}
 }

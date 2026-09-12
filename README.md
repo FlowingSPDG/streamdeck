@@ -22,7 +22,6 @@ package main
 import (
 	"context"
 	"os"
-	"os/signal"
 	"strconv"
 
 	"github.com/FlowingSPDG/streamdeck/v2"
@@ -33,8 +32,7 @@ type Settings struct {
 }
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
+	ctx := context.Background()
 
 	params, err := streamdeck.ParseRegistrationParams(os.Args)
 	if err != nil {
@@ -52,7 +50,7 @@ func main() {
 		return action.SetTitle(ctx, strconv.Itoa(e.Payload.Settings.Counter), streamdeck.HardwareAndSoftware)
 	})
 
-	if err := client.Run(ctx); err != nil && ctx.Err() == nil {
+	if err := client.Run(ctx); err != nil {
 		panic(err)
 	}
 }
