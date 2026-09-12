@@ -1,0 +1,14 @@
+{
+  "action": "com.elgato.example.action",
+  "event": "didReceiveSettings",
+  "context": "ctx-1",
+  "device": "dev-1",
+  "id": "1",
+  "payload": {
+    "controller": "Keypad",
+    "coordinates": {"column": 0, "row": 0},
+    "isInMultiAction": false,
+    "resources": {"icon": "imgs/icon.png"},
+    "settings": {"counter": 4}
+  }
+}

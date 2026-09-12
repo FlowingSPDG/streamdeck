@@ -1,116 +1,67 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance when working with code in this repository.
 
 ## Project Overview
 
-This is a Go library for creating Elgato StreamDeck plugins. It provides unofficial Go bindings for the StreamDeck SDK, allowing developers to write plugins that can display information and respond to button presses on StreamDeck devices.
+Go library for Elgato Stream Deck plugins. The public module path is `github.com/FlowingSPDG/streamdeck/v2`. It implements the Stream Deck 7.1 WebSocket plugin API.
+
+Requires Go 1.27 or later.
 
 ## Development Commands
 
-### Testing and Running Examples
-
-```bash
-# Test an example plugin locally (counter example)
-cd examples/counter
-make test
-
-# Build a plugin for distribution
-cd examples/counter
-make build
-
-# View plugin logs
-make logs
-```
-
-### Running Tests
-
 ```bash
 go test ./...
-go test -race ./...  # Run with race detection
+go test -race ./...
+gofmt -l .
+
+cd examples
+make build
 ```
 
-### Building
+Example plugins live in `examples/` as a separate module (`examples/go.mod`) wired through `go.work`.
 
-```bash
-# Build for multiple platforms (example from counter/Makefile)
-GOOS=darwin GOARCH=amd64 go build -o dist/plugin .
-GOOS=windows GOARCH=amd64 go build -o dist/plugin.exe .
-```
+## Architecture
 
-## Architecture Overview
+- `Client` (`client.go`) owns the WebSocket, pending request map, and per-context event queues.
+- `Action[S]` (`action.go`) is a typed handle for one action UUID. Settings type `S` is fixed at registration.
+- Incoming events use `Event.Payload json.RawMessage`. Typed handlers call `Event.Unmarshal[T]()`.
+- Outgoing messages use the unexported `outgoingEvent` type.
+- `dispatch.go` serializes handlers per Stream Deck context so `GetSettings` can block without stalling the read loop. Each context has an unbounded FIFO mailbox: the reader only takes a mutex, then a worker drains the burst after the current handler returns. Handler panics are recovered so one button cannot kill its worker.
+- `context/context.go` stores action/context/device IDs on `context.Context`.
 
-### Core Components
+## Client lifecycle
 
-- **Client** (`client.go`): Main WebSocket client that communicates with StreamDeck software
-- **Action** (`action.go`): Represents plugin actions with event handlers and context management
-- **Event System** (`event.go`): JSON-based event handling for StreamDeck protocol
-- **Registration** (`registration.go`): Command-line argument parsing for plugin registration
+1. `ParseRegistrationParams(os.Args)`
+2. `streamdeck.NewClient(ctx, params, opts...)`
+3. `streamdeck.NewAction[Settings](client, uuid)` and register handlers
+4. `client.Run(ctx)` also listens for `os.Interrupt` (Ctrl+C). Stream Deck sends it on app shutdown and plugin uninstall. Pass a cancellable `ctx` if you need an additional stop switch.
 
-### Key Patterns
+## Event handling
 
-1. **Event-Driven Architecture**: Plugins respond to StreamDeck events (KeyDown, WillAppear, etc.) through registered handlers
-2. **Context Management**: Each action instance has its own context for state management
-3. **Concurrent Event Handling**: Multiple event handlers execute concurrently using goroutines
-4. **WebSocket Communication**: All communication with StreamDeck software happens over WebSocket
+Handlers on `Action[S]` receive `ActionEvent[P]`. Property Inspector messages use a method type parameter:
 
-### Client Lifecycle
-
-1. Parse registration parameters from command line arguments
-2. Create new client with `streamdeck.NewClient(ctx, params)`
-3. Register event handlers on actions using `action.RegisterHandler(eventName, handler)`
-4. Run client with `client.Run(ctx)` to start WebSocket connection
-5. Client handles incoming events and dispatches to registered handlers
-
-### Event Handling
-
-Event handlers follow this signature:
 ```go
-func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error
+action.OnPropertyInspectorMessage(func(ctx context.Context, m MyMsg) error {
+    return action.SendToPropertyInspector(ctx, Reply{})
+})
 ```
 
-Common events:
-- `WillAppear`: Action appears on StreamDeck
-- `WillDisappear`: Action disappears from StreamDeck
-- `KeyDown`/`KeyUp`: Key press/release events
-- `SendToPlugin`: Data from Property Inspector
+Events without an action UUID (`applicationDidLaunch`, `didReceiveDeepLink`, devices, secrets) are registered on `Client`.
 
-### State Management
+Unknown action UUIDs are discarded.
 
-- Actions automatically track contexts using `addContext`/`removeContext`
-- Use `client.SetSettings(ctx, settings)` for persistent storage
-- Use `client.GetSettings(ctx)` to retrieve stored settings
-- Global settings available via `SetGlobalSettings`/`GetGlobalSettings`
+## Settings
 
-### Context Package
+- `action.SetSettings(ctx, settings)` / `action.GetSettings(ctx)`
+- `client.SetGlobalSettings[G](ctx, g)` / `client.GetGlobalSettings[G](ctx)`
+- Getters wait for the matching `id` on the response.
 
-The `context/context.go` package provides utilities for extracting StreamDeck-specific information from Go contexts:
-- `sdcontext.Context(ctx)` - Get StreamDeck context ID
-- `sdcontext.Device(ctx)` - Get device ID  
-- `sdcontext.Action(ctx)` - Get action ID
+## Images
 
-## Example Plugin Structure
-
-See `examples/counter/main.go` for a complete example:
-
-1. Parse registration parameters
-2. Create client
-3. Get action instance
-4. Register event handlers for WillAppear, KeyDown, etc.
-5. Handle state management and UI updates
-6. Run client
+Typical key size is 72x72. `streamdeck.Image` encodes `image.Image` as a PNG data URL.
 
 ## Dependencies
 
-- `github.com/coder/websocket` - WebSocket client
-- `github.com/puzpuzpuz/xsync/v3` - Thread-safe maps
-- `github.com/shirou/gopsutil` - System metrics (CPU example)
-- `golang.org/x/sync` - Synchronization primitives
-
-## Plugin Development Notes
-
-- StreamDeck plugins receive command-line arguments for port, UUID, and registration info
-- Use Makefiles for cross-platform builds (see examples)
-- Image dimensions are typically 72x72 pixels
-- Always handle errors in event handlers to prevent crashes
-- Use appropriate targets for SetImage/SetTitle (Hardware, Software, or Both)
+Library module: `github.com/coder/websocket` only.
+Example module may pull `gopsutil` and similar tools.

@@ -1,0 +1,6 @@
+{
+  "event": "didReceiveDeepLink",
+  "payload": {
+    "url": "do/something"
+  }
+}

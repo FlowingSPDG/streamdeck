@@ -1,0 +1,13 @@
+{
+  "action": "com.elgato.example.encoder",
+  "event": "dialRotate",
+  "context": "ctx-enc",
+  "device": "dev-plus",
+  "payload": {
+    "controller": "Encoder",
+    "coordinates": {"column": 2, "row": 0},
+    "pressed": false,
+    "settings": {"gain": 10},
+    "ticks": 1
+  }
+}

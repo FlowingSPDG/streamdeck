@@ -1,0 +1,13 @@
+{
+  "action": "com.elgato.example.action",
+  "event": "keyDown",
+  "context": "ctx-1",
+  "device": "dev-1",
+  "payload": {
+    "controller": "Keypad",
+    "coordinates": {"column": 3, "row": 1},
+    "settings": {"counter": 2},
+    "state": 0,
+    "isInMultiAction": false
+  }
+}

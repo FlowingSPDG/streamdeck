@@ -1,88 +1,149 @@
 package streamdeck
 
 import (
-	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
-func TestEvent_UnmarshalPayload(t *testing.T) {
-	tests := []struct {
-		name    string
-		event   Event
-		target  any
-		wantErr bool
-	}{
-		{
-			name: "valid payload",
-			event: Event{
-				Payload: json.RawMessage(`{"message": "test"}`),
-			},
-			target:  &LogMessagePayload{},
-			wantErr: false,
-		},
-		{
-			name: "nil payload",
-			event: Event{
-				Payload: nil,
-			},
-			target:  &LogMessagePayload{},
-			wantErr: false,
-		},
-		{
-			name: "invalid json",
-			event: Event{
-				Payload: json.RawMessage(`{"message": "test"`),
-			},
-			target:  &LogMessagePayload{},
-			wantErr: true,
-		},
+func TestEventUnmarshalKeyDown(t *testing.T) {
+	raw := mustReadTestdata(t, "events", "keyDown.json")
+	var ev Event
+	if err := json.Unmarshal(raw, &ev); err != nil {
+		t.Fatal(err)
 	}
+	if ev.Event != KeyDown {
+		t.Fatalf("event = %q", ev.Event)
+	}
+	p, err := ev.Unmarshal[KeyDownPayload[map[string]int]]()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Controller != ControllerKeypad {
+		t.Fatalf("controller = %q", p.Controller)
+	}
+	if p.Coordinates == nil || p.Coordinates.Column != 3 {
+		t.Fatalf("coordinates = %+v", p.Coordinates)
+	}
+	if p.Settings["counter"] != 2 {
+		t.Fatalf("settings = %+v", p.Settings)
+	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.event.UnmarshalPayload(tt.target)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Event.UnmarshalPayload() error = %v, wantErr %v", err, tt.wantErr)
+func TestEventUnmarshalNilPayload(t *testing.T) {
+	ev := Event{}
+	p, err := ev.Unmarshal[LogMessagePayload]()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Message != "" {
+		t.Fatalf("unexpected %+v", p)
+	}
+}
+
+func TestDeviceDidConnectUsesName(t *testing.T) {
+	raw := mustReadTestdata(t, "events", "deviceDidConnect.json")
+	var ev Event
+	if err := json.Unmarshal(raw, &ev); err != nil {
+		t.Fatal(err)
+	}
+	if ev.DeviceInfo.Name != "Stream Deck" {
+		t.Fatalf("name = %q", ev.DeviceInfo.Name)
+	}
+	if ev.DeviceInfo.Type != StreamDeck {
+		t.Fatalf("type = %d", ev.DeviceInfo.Type)
+	}
+}
+
+func TestGoldenEventsDecode(t *testing.T) {
+	dir := filepath.Join("testdata", "events")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		t.Run(e.Name(), func(t *testing.T) {
+			raw := mustReadTestdata(t, "events", e.Name())
+			var ev Event
+			if err := json.Unmarshal(raw, &ev); err != nil {
+				t.Fatal(err)
+			}
+			if ev.Event == "" {
+				t.Fatal("empty event name")
 			}
 		})
 	}
 }
 
-func TestNewEvent(t *testing.T) {
-	ctx := context.Background()
-	payload := LogMessagePayload{Message: "test"}
-
-	event := NewEvent(ctx, LogMessage, payload)
-
-	if event.Event != LogMessage {
-		t.Errorf("NewEvent() Event = %v, want %v", event.Event, LogMessage)
+func TestSetTitleOmitsStateWhenUnset(t *testing.T) {
+	data, err := json.Marshal(SetTitlePayload{Title: "Hi", Target: HardwareAndSoftware})
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	if event.Payload == nil {
-		t.Error("NewEvent() Payload should not be nil")
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := m["state"]; ok {
+		t.Fatalf("state should be omitted: %s", data)
 	}
 }
 
-func TestSetTriggerDescriptionPayload(t *testing.T) {
-	payload := SetTriggerDescriptionPayload{
-		LongTouch: "Long touch description",
-		Push:      "Push description",
-		Rotate:    "Rotate description",
-		Touch:     "Touch description",
-	}
-
-	data, err := json.Marshal(payload)
+func TestSetTitleIncludesStateZero(t *testing.T) {
+	data, err := json.Marshal(SetTitlePayload{Title: "Hi", State: new(0)})
 	if err != nil {
-		t.Fatalf("Failed to marshal SetTriggerDescriptionPayload: %v", err)
+		t.Fatal(err)
 	}
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatal(err)
+	}
+	if m["state"] != float64(0) {
+		t.Fatalf("state = %v", m["state"])
+	}
+}
 
-	var unmarshaled SetTriggerDescriptionPayload
-	if err := json.Unmarshal(data, &unmarshaled); err != nil {
-		t.Fatalf("Failed to unmarshal SetTriggerDescriptionPayload: %v", err)
+func TestSwitchProfileOmitsPageWhenUnset(t *testing.T) {
+	data, err := json.Marshal(SwitchProfilePayload{Profile: "Default"})
+	if err != nil {
+		t.Fatal(err)
 	}
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := m["page"]; ok {
+		t.Fatalf("page should be omitted: %s", data)
+	}
+}
 
-	if unmarshaled.LongTouch != payload.LongTouch {
-		t.Errorf("LongTouch = %v, want %v", unmarshaled.LongTouch, payload.LongTouch)
+func TestCommandGoldens(t *testing.T) {
+	dir := filepath.Join("testdata", "commands")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
 	}
+	for _, e := range entries {
+		t.Run(e.Name(), func(t *testing.T) {
+			raw := mustReadTestdata(t, "commands", e.Name())
+			var ev outgoingEvent
+			if err := json.Unmarshal(raw, &ev); err != nil {
+				t.Fatal(err)
+			}
+			if ev.Event == "" {
+				t.Fatal("empty command name")
+			}
+		})
+	}
+}
+
+func mustReadTestdata(t *testing.T, parts ...string) []byte {
+	t.Helper()
+	p := filepath.Join(append([]string{"testdata"}, parts...)...)
+	b, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
 }

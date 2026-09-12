@@ -1,34 +1,35 @@
 package streamdeck
 
-// LogMessagePayload A string to write to the logs file.
+// LogMessagePayload is written to the Stream Deck log file.
 type LogMessagePayload struct {
 	Message string `json:"message"`
 }
 
-// OpenURLPayload An URL to open in the default browser.
+// OpenURLPayload opens a URL in the default browser.
 type OpenURLPayload struct {
 	URL string `json:"url"`
 }
 
-// SetTitlePayload The title to display. If there is no title parameter, the title is reset to the title set by the user.
+// SetTitlePayload updates the title of an action instance.
 type SetTitlePayload struct {
-	Title  string `json:"title"`
-	Target Target `json:"target"`
-	State  int    `json:"state"`
+	Title  string `json:"title,omitempty"`
+	Target Target `json:"target,omitempty"`
+	State  *int   `json:"state,omitempty"`
 }
 
-// SetImagePayload The image to display encoded in base64 with the image format declared in the mime type (PNG, JPEG, BMP, ...). svg is also supported. If no image is passed, the image is reset to the default image from the manifest.
+// SetImagePayload updates the image of an action instance.
 type SetImagePayload struct {
-	Base64Image string `json:"image"`
-	Target      Target `json:"target"`
-	State       int    `json:"state"`
+	Base64Image string `json:"image,omitempty"`
+	Target      Target `json:"target,omitempty"`
+	State       *int   `json:"state,omitempty"`
 }
 
+// SetFeedbackLayoutPayload selects a Stream Deck + layout.
 type SetFeedbackLayoutPayload struct {
 	Layout string `json:"layout"`
 }
 
-// SetTriggerDescriptionPayload Sets the trigger descriptions associated with an encoder action instance.
+// SetTriggerDescriptionPayload updates encoder trigger descriptions.
 type SetTriggerDescriptionPayload struct {
 	LongTouch string `json:"longTouch,omitempty"`
 	Push      string `json:"push,omitempty"`
@@ -36,111 +37,143 @@ type SetTriggerDescriptionPayload struct {
 	Touch     string `json:"touch,omitempty"`
 }
 
-// DeviceDidChangePayload A json object containing information about the device that changed.
-type DeviceDidChangePayload struct {
-	DeviceInfo DeviceInfo `json:"deviceInfo,omitempty"`
-}
-
-// SetStatePayload A 0-based integer value representing the state requested.
+// SetStatePayload selects a multi-state action state.
 type SetStatePayload struct {
 	State int `json:"state"`
 }
 
-// SwitchProfilePayload The name of the profile to switch to. The name should be identical to the name provided in the manifest.json file.
+// SwitchProfilePayload switches to a plugin-distributed profile.
 type SwitchProfilePayload struct {
 	Profile string `json:"profile,omitempty"`
-	Page    int    `json:"page,omitempty"`
+	Page    *int   `json:"page,omitempty"`
 }
 
-// DidReceiveSettingsPayload This json object contains persistently stored data.
-type DidReceiveSettingsPayload[T any] struct {
-	Settings        T           `json:"settings,omitempty"`
-	Coordinates     Coordinates `json:"coordinates,omitempty"`
-	IsInMultiAction bool        `json:"isInMultiAction,omitempty"`
-}
-
-// Coordinates The coordinates of the action triggered.
+// Coordinates locate an action on a device grid.
 type Coordinates struct {
-	Column int `json:"column,omitempty"`
-	Row    int `json:"row,omitempty"`
+	Column int `json:"column"`
+	Row    int `json:"row"`
 }
 
-// DidReceiveGlobalSettingsPayload This json object contains persistently stored data.
+// DidReceiveSettingsPayload is returned for getSettings and property inspector edits.
+type DidReceiveSettingsPayload[T any] struct {
+	Settings        T                 `json:"settings,omitempty"`
+	Coordinates     *Coordinates      `json:"coordinates,omitempty"`
+	IsInMultiAction bool              `json:"isInMultiAction,omitempty"`
+	Controller      Controller        `json:"controller,omitempty"`
+	Resources       map[string]string `json:"resources,omitempty"`
+	State           *int              `json:"state,omitempty"`
+}
+
+// DidReceiveResourcesPayload is returned for getResources and resource edits.
+type DidReceiveResourcesPayload[T any] struct {
+	Settings        T                 `json:"settings,omitempty"`
+	Coordinates     *Coordinates      `json:"coordinates,omitempty"`
+	IsInMultiAction bool              `json:"isInMultiAction,omitempty"`
+	Controller      Controller        `json:"controller,omitempty"`
+	Resources       map[string]string `json:"resources,omitempty"`
+	State           *int              `json:"state,omitempty"`
+}
+
+// DidReceiveGlobalSettingsPayload contains plugin-wide settings.
 type DidReceiveGlobalSettingsPayload[T any] struct {
 	Settings T `json:"settings,omitempty"`
 }
 
-// KeyDownPayload A json object
+// DidReceiveSecretsPayload contains plugin secrets.
+type DidReceiveSecretsPayload[T any] struct {
+	Secrets T `json:"secrets,omitempty"`
+}
+
+// KeyDownPayload is sent when a key is pressed.
 type KeyDownPayload[T any] struct {
-	Settings         T           `json:"settings,omitempty"`
-	Coordinates      Coordinates `json:"coordinates,omitempty"`
-	State            int         `json:"state,omitempty"`
-	UserDesiredState int         `json:"userDesiredState,omitempty"`
-	IsInMultiAction  bool        `json:"isInMultiAction,omitempty"`
+	Settings         T                 `json:"settings,omitempty"`
+	Coordinates      *Coordinates      `json:"coordinates,omitempty"`
+	State            *int              `json:"state,omitempty"`
+	UserDesiredState *int              `json:"userDesiredState,omitempty"`
+	IsInMultiAction  bool              `json:"isInMultiAction,omitempty"`
+	Controller       Controller        `json:"controller,omitempty"`
+	Resources        map[string]string `json:"resources,omitempty"`
 }
 
-// KeyUpPayload A json object
+// KeyUpPayload is sent when a key is released.
 type KeyUpPayload[T any] struct {
-	Settings         T           `json:"settings,omitempty"`
-	Coordinates      Coordinates `json:"coordinates,omitempty"`
-	State            int         `json:"state,omitempty"`
-	UserDesiredState int         `json:"userDesiredState,omitempty"`
-	IsInMultiAction  bool        `json:"isInMultiAction,omitempty"`
+	Settings         T                 `json:"settings,omitempty"`
+	Coordinates      *Coordinates      `json:"coordinates,omitempty"`
+	State            *int              `json:"state,omitempty"`
+	UserDesiredState *int              `json:"userDesiredState,omitempty"`
+	IsInMultiAction  bool              `json:"isInMultiAction,omitempty"`
+	Controller       Controller        `json:"controller,omitempty"`
+	Resources        map[string]string `json:"resources,omitempty"`
 }
 
-// TouchTapPayload A json object
+// TouchTapPayload is sent when a Stream Deck + touchscreen is tapped.
 type TouchTapPayload[T any] struct {
-	Settings    T           `json:"settings,omitempty"`
-	Coordinates Coordinates `json:"coordinates,omitempty"`
-	TapPos      [2]int      `json:"tapPos,omitempty"`
-	Hold        bool        `json:"hold,omitempty"`
+	Settings    T                 `json:"settings,omitempty"`
+	Coordinates *Coordinates      `json:"coordinates,omitempty"`
+	TapPos      [2]int            `json:"tapPos,omitempty"`
+	Hold        bool              `json:"hold,omitempty"`
+	Controller  Controller        `json:"controller,omitempty"`
+	Resources   map[string]string `json:"resources,omitempty"`
 }
 
+// DialDownPayload is sent when a Stream Deck + dial is pressed.
 type DialDownPayload[T any] struct {
-	Settings    T           `json:"settings,omitempty"`
-	Coordinates Coordinates `json:"coordinates,omitempty"`
-	Controller  string      `json:"controller,omitempty"` // Encoder
+	Settings    T                 `json:"settings,omitempty"`
+	Coordinates *Coordinates      `json:"coordinates,omitempty"`
+	Controller  Controller        `json:"controller,omitempty"`
+	Resources   map[string]string `json:"resources,omitempty"`
 }
 
+// DialUpPayload is sent when a Stream Deck + dial is released.
 type DialUpPayload[T any] struct {
-	Settings    T           `json:"settings,omitempty"`
-	Coordinates Coordinates `json:"coordinates,omitempty"`
-	Controller  string      `json:"controller,omitempty"` // Encoder
+	Settings    T                 `json:"settings,omitempty"`
+	Coordinates *Coordinates      `json:"coordinates,omitempty"`
+	Controller  Controller        `json:"controller,omitempty"`
+	Resources   map[string]string `json:"resources,omitempty"`
 }
 
+// DialRotatePayload is sent when a Stream Deck + dial is rotated.
 type DialRotatePayload[T any] struct {
-	Settings    T           `json:"settings,omitempty"`
-	Coordinates Coordinates `json:"coordinates,omitempty"`
-	Ticks       int         `json:"ticks,omitempty"`
-	Pressed     bool        `json:"pressed,omitempty"`
+	Settings    T                 `json:"settings,omitempty"`
+	Coordinates *Coordinates      `json:"coordinates,omitempty"`
+	Ticks       int               `json:"ticks,omitempty"`
+	Pressed     bool              `json:"pressed,omitempty"`
+	Controller  Controller        `json:"controller,omitempty"`
+	Resources   map[string]string `json:"resources,omitempty"`
 }
 
-// WillAppearPayload A json object
+// WillAppearPayload is sent when an action instance becomes visible.
 type WillAppearPayload[T any] struct {
-	Settings        T           `json:"settings,omitempty"`
-	Coordinates     Coordinates `json:"coordinates,omitempty"`
-	State           int         `json:"state,omitempty"`
-	IsInMultiAction bool        `json:"isInMultiAction,omitempty"`
+	Settings        T                 `json:"settings,omitempty"`
+	Coordinates     *Coordinates      `json:"coordinates,omitempty"`
+	State           *int              `json:"state,omitempty"`
+	IsInMultiAction bool              `json:"isInMultiAction,omitempty"`
+	Controller      Controller        `json:"controller,omitempty"`
+	Resources       map[string]string `json:"resources,omitempty"`
 }
 
-// WillDisappearPayload A json object
+// WillDisappearPayload is sent when an action instance is hidden.
 type WillDisappearPayload[T any] struct {
-	Settings        T           `json:"settings,omitempty"`
-	Coordinates     Coordinates `json:"coordinates,omitempty"`
-	State           int         `json:"state,omitempty"`
-	IsInMultiAction bool        `json:"isInMultiAction,omitempty"`
+	Settings        T                 `json:"settings,omitempty"`
+	Coordinates     *Coordinates      `json:"coordinates,omitempty"`
+	State           *int              `json:"state,omitempty"`
+	IsInMultiAction bool              `json:"isInMultiAction,omitempty"`
+	Controller      Controller        `json:"controller,omitempty"`
+	Resources       map[string]string `json:"resources,omitempty"`
 }
 
-// TitleParametersDidChangePayload A json object
+// TitleParametersDidChangePayload is sent when the user edits title parameters.
 type TitleParametersDidChangePayload[T any] struct {
-	Settings        T               `json:"settings,omitempty"`
-	Coordinates     Coordinates     `json:"coordinates,omitempty"`
-	State           int             `json:"state,omitempty"`
-	Title           string          `json:"title,omitempty"`
-	TitleParameters TitleParameters `json:"titleParameters,omitempty"`
+	Settings        T                 `json:"settings,omitempty"`
+	Coordinates     *Coordinates      `json:"coordinates,omitempty"`
+	State           *int              `json:"state,omitempty"`
+	Title           string            `json:"title,omitempty"`
+	TitleParameters TitleParameters   `json:"titleParameters,omitempty"`
+	Controller      Controller        `json:"controller,omitempty"`
+	Resources       map[string]string `json:"resources,omitempty"`
 }
 
-// TitleParameters A json object
+// TitleParameters describes how a title is rendered.
 type TitleParameters struct {
 	FontFamily     string `json:"fontFamily,omitempty"`
 	FontSize       int    `json:"fontSize,omitempty"`
@@ -151,76 +184,37 @@ type TitleParameters struct {
 	TitleColor     string `json:"titleColor,omitempty"`
 }
 
-// ApplicationDidLaunchPayload A json object
+// ApplicationDidLaunchPayload names a monitored application that launched.
 type ApplicationDidLaunchPayload struct {
 	Application string `json:"application,omitempty"`
 }
 
-// ApplicationDidTerminatePayload A json object
+// ApplicationDidTerminatePayload names a monitored application that exited.
 type ApplicationDidTerminatePayload struct {
 	Application string `json:"application,omitempty"`
 }
 
-// SystemDidWakeUpPayload A json object sent when the computer wakes up
-type SystemDidWakeUpPayload struct {
-}
-
-// PropertyInspectorDidAppearPayload A json object sent when the property inspector appears
+// PropertyInspectorDidAppearPayload is sent when the property inspector opens.
 type PropertyInspectorDidAppearPayload[T any] struct {
-	Settings        T           `json:"settings,omitempty"`
-	Coordinates     Coordinates `json:"coordinates,omitempty"`
-	State           int         `json:"state,omitempty"`
-	IsInMultiAction bool        `json:"isInMultiAction,omitempty"`
+	Settings        T                 `json:"settings,omitempty"`
+	Coordinates     *Coordinates      `json:"coordinates,omitempty"`
+	State           *int              `json:"state,omitempty"`
+	IsInMultiAction bool              `json:"isInMultiAction,omitempty"`
+	Controller      Controller        `json:"controller,omitempty"`
+	Resources       map[string]string `json:"resources,omitempty"`
 }
 
-// PropertyInspectorDidDisappearPayload A json object sent when the property inspector disappears
+// PropertyInspectorDidDisappearPayload is sent when the property inspector closes.
 type PropertyInspectorDidDisappearPayload[T any] struct {
-	Settings        T           `json:"settings,omitempty"`
-	Coordinates     Coordinates `json:"coordinates,omitempty"`
-	State           int         `json:"state,omitempty"`
-	IsInMultiAction bool        `json:"isInMultiAction,omitempty"`
+	Settings        T                 `json:"settings,omitempty"`
+	Coordinates     *Coordinates      `json:"coordinates,omitempty"`
+	State           *int              `json:"state,omitempty"`
+	IsInMultiAction bool              `json:"isInMultiAction,omitempty"`
+	Controller      Controller        `json:"controller,omitempty"`
+	Resources       map[string]string `json:"resources,omitempty"`
 }
 
-// DidReceiveDeepLinkPayload A json object containing the deep link URL
+// DidReceiveDeepLinkPayload contains a deep-link path with the prefix omitted.
 type DidReceiveDeepLinkPayload struct {
 	URL string `json:"url,omitempty"`
-}
-
-// DidReceivePropertyInspectorMessagePayload A json object containing the message from the property inspector
-type DidReceivePropertyInspectorMessagePayload[T any] struct {
-	Action  string `json:"action,omitempty"`
-	Message T      `json:"message,omitempty"`
-}
-
-// SendToPluginPayload A json object containing the message to send to the plugin
-type SendToPluginPayload[T any] struct {
-	Context string `json:"context,omitempty"`
-	Action  string `json:"action,omitempty"`
-	Payload T      `json:"payload,omitempty"`
-}
-
-// SendToPropertyInspectorPayload A json object containing the message to send to the property inspector
-type SendToPropertyInspectorPayload[T any] struct {
-	Context string `json:"context,omitempty"`
-	Payload T      `json:"payload,omitempty"`
-}
-
-// GetSettingsPayload A json object to request the persistent data
-type GetSettingsPayload struct {
-	Context string `json:"context,omitempty"`
-}
-
-// SetSettingsPayload A json object containing the persistent data
-type SetSettingsPayload[T any] struct {
-	Context  string `json:"context,omitempty"`
-	Settings T      `json:"settings,omitempty"`
-}
-
-// GetGlobalSettingsPayload A json object to request the global persistent data
-type GetGlobalSettingsPayload struct {
-}
-
-// SetGlobalSettingsPayload A json object containing the global persistent data
-type SetGlobalSettingsPayload[T any] struct {
-	Settings T `json:"settings,omitempty"`
 }

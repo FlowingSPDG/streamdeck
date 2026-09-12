@@ -8,7 +8,7 @@ import (
 	"image/png"
 )
 
-// Image Generate new base64 image string from image.Image.
+// Image encodes img as a PNG data URL suitable for SetImage.
 func Image(i image.Image) (string, error) {
 	var b bytes.Buffer
 

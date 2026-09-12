@@ -62,6 +62,20 @@ $RECYCLE.BIN/
 
 # End of https://www.gitignore.io/api/go,windows,visualstudiocode
 *.log
-*.wasm
 *.DS_Store
 *streamDeckPlugin
+
+# Unity sidecar files generated in this working tree
+*.meta
+
+# Build output
+dist/
+generic_demo.exe
+settings_manager.exe
+
+# Example plugin binaries (extensionless Windows/Unix builds)
+examples/counter/counter
+examples/cpu/cpu
+examples/settings_manager/settings_manager
+examples/plus/plus
+examples/*/dist/
