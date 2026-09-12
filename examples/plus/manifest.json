@@ -1,24 +1,36 @@
 {
-  "Actions": [
-    {
-      "Name": "Plus Dial",
-      "UUID": "dev.samwho.streamdeck.plus",
-      "Controllers": ["Encoder"],
-      "Encoder": {
-        "layout": "$B1"
-      },
-      "Tooltip": "Rotate to change a value"
-    }
-  ],
   "SDKVersion": 2,
   "Author": "FlowingSPDG",
+  "UUID": "dev.samwho.streamdeck.plus",
   "CodePath": "plus.exe",
+  "CodePathWin": "plus.exe",
   "Description": "Stream Deck + dial and touch example",
   "Name": "Plus Dial",
+  "Category": "Plus Dial",
+  "Icon": "imgs/plugin",
+  "CategoryIcon": "imgs/plugin",
   "Version": "0.1",
   "OS": [
     { "Platform": "mac", "MinimumVersion": "10.11" },
     { "Platform": "windows", "MinimumVersion": "10" }
   ],
-  "Software": { "MinimumVersion": "6.1" }
+  "Software": { "MinimumVersion": "6.5" },
+  "Actions": [
+    {
+      "Name": "Plus Dial",
+      "UUID": "dev.samwho.streamdeck.plus",
+      "Icon": "imgs/action",
+      "Controllers": ["Encoder"],
+      "Encoder": {
+        "layout": "$B1"
+      },
+      "States": [
+        {
+          "Name": "Default",
+          "Image": "imgs/key"
+        }
+      ],
+      "Tooltip": "Rotate to change a value"
+    }
+  ]
 }

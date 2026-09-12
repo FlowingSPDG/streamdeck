@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,minimal-ui,viewport-fit=cover" />
+	<title>Settings Manager</title>
+	<link rel="stylesheet" href="sdpi.css" />
+</head>
+<body>
+	<div class="sdpi-wrapper">
+		<div class="sdpi-item">
+			<div class="sdpi-item-label">Title</div>
+			<input class="sdpi-item-value" id="buttonText" type="text" value="" />
+		</div>
+
+		<div class="sdpi-item">
+			<div class="sdpi-item-label">Color</div>
+			<select class="sdpi-item-value select" id="color">
+				<option value="blue">Blue</option>
+				<option value="red">Red</option>
+				<option value="green">Green</option>
+				<option value="yellow">Yellow</option>
+				<option value="purple">Purple</option>
+			</select>
+		</div>
+
+		<div type="checkbox" class="sdpi-item">
+			<div class="sdpi-item-label">Auto Increment</div>
+			<div class="sdpi-item-child">
+				<input id="autoIncrement" type="checkbox" value="on" />
+				<label for="autoIncrement" class="sdpi-item-label"><span></span></label>
+			</div>
+		</div>
+
+		<div class="sdpi-heading">Instances</div>
+
+		<div class="sdpi-item">
+			<div class="sdpi-item-label empty"></div>
+			<button class="sdpi-item-value" id="getAllStates">Get All States</button>
+		</div>
+		<div class="sdpi-item">
+			<div class="sdpi-item-label empty"></div>
+			<button class="sdpi-item-value" id="resetAll">Reset Counters</button>
+		</div>
+		<div class="sdpi-item">
+			<div class="sdpi-item-label">Status</div>
+			<div class="sdpi-item-value" id="status" style="min-height: 16px;"></div>
+		</div>
+		<div class="sdpi-item">
+			<div class="sdpi-item-label">States</div>
+			<div class="sdpi-item-value" id="statesList"></div>
+		</div>
+	</div>
+
+	<script>
+		var websocket = null;
+		var uuid = null;
+		var actionInfo = {};
+		var settings = {
+			buttonText: '',
+			color: 'blue',
+			autoIncrement: false
+		};
+
+		function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo, inActionInfo) {
+			uuid = inUUID;
+			actionInfo = JSON.parse(inActionInfo);
+			if (actionInfo.payload && actionInfo.payload.settings) {
+				applySettings(actionInfo.payload.settings);
+			}
+
+			websocket = new WebSocket('ws://127.0.0.1:' + inPort);
+			websocket.onopen = function () {
+				websocket.send(JSON.stringify({
+					event: inRegisterEvent,
+					uuid: inUUID
+				}));
+				websocket.send(JSON.stringify({
+					event: 'getSettings',
+					context: uuid
+				}));
+			};
+			websocket.onmessage = function (evt) {
+				var data = JSON.parse(evt.data);
+				if (data.event === 'didReceiveSettings' && data.payload && data.payload.settings) {
+					applySettings(data.payload.settings);
+				}
+				if (data.event === 'sendToPropertyInspector') {
+					onPluginMessage(data.payload || {});
+				}
+			};
+		}
+
+		function applySettings(next) {
+			settings = Object.assign({}, settings, next);
+			document.getElementById('buttonText').value = settings.buttonText || '';
+			document.getElementById('color').value = settings.color || 'blue';
+			document.getElementById('autoIncrement').checked = !!settings.autoIncrement;
+		}
+
+		function persist() {
+			settings.buttonText = document.getElementById('buttonText').value;
+			settings.color = document.getElementById('color').value;
+			settings.autoIncrement = document.getElementById('autoIncrement').checked;
+			if (!websocket) {
+				return;
+			}
+			websocket.send(JSON.stringify({
+				event: 'setSettings',
+				context: uuid,
+				payload: {
+					counter: settings.counter || 0,
+					buttonText: settings.buttonText,
+					color: settings.color,
+					autoIncrement: settings.autoIncrement
+				}
+			}));
+		}
+
+		function sendToPlugin(payload) {
+			if (!websocket) {
+				return;
+			}
+			websocket.send(JSON.stringify({
+				action: actionInfo.action,
+				event: 'sendToPlugin',
+				context: uuid,
+				payload: payload
+			}));
+		}
+
+		function onPluginMessage(payload) {
+			if (payload.action === 'allStates') {
+				renderStates(payload.states || {});
+				setStatus('Updated');
+			} else if (payload.action === 'resetComplete') {
+				setStatus('Counters reset');
+			}
+		}
+
+		function setStatus(text) {
+			document.getElementById('status').textContent = text;
+		}
+
+		function renderStates(states) {
+			var keys = Object.keys(states);
+			if (keys.length === 0) {
+				document.getElementById('statesList').textContent = 'No visible instances';
+				return;
+			}
+			keys.sort();
+			document.getElementById('statesList').textContent = keys.map(function (id) {
+				var state = states[id] || {};
+				var s = state.settings || {};
+				var n = 0;
+				if (typeof s.counter === 'number') {
+					n = s.counter;
+				}
+				return (s.buttonText || 'Untitled') + ' · ' + n + ' · ' + (s.color || '');
+			}).join('\n');
+		}
+
+		document.getElementById('buttonText').addEventListener('input', persist);
+		document.getElementById('color').addEventListener('change', persist);
+		document.getElementById('autoIncrement').addEventListener('change', persist);
+		document.getElementById('getAllStates').addEventListener('click', function () {
+			sendToPlugin({ action: 'getAllStates' });
+		});
+		document.getElementById('resetAll').addEventListener('click', function () {
+			sendToPlugin({ action: 'resetAll' });
+		});
+	</script>
+</body>
+</html>
