@@ -36,7 +36,7 @@ func newFakeDeck(t *testing.T) *fakeDeck {
 		f.mu.Lock()
 		f.conn = c
 		f.mu.Unlock()
-		defer c.Close(websocket.StatusNormalClosure, "")
+		defer func() { _ = c.Close(websocket.StatusNormalClosure, "") }()
 
 		ctx := r.Context()
 		go func() {

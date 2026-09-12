@@ -24,11 +24,12 @@ func TestWithIDs(t *testing.T) {
 	}
 }
 
-func TestContextNilAndWrongType(t *testing.T) {
-	if sdcontext.Context(nil) != "" {
-		t.Fatal("nil context should be empty")
+func TestContextWithoutIDs(t *testing.T) {
+	if sdcontext.Context(context.Background()) != "" {
+		t.Fatal("background context should be empty")
 	}
-	ctx := context.WithValue(context.Background(), struct{}{}, 1)
+	type foreignKey struct{}
+	ctx := context.WithValue(context.Background(), foreignKey{}, 1)
 	if sdcontext.Device(ctx) != "" {
 		t.Fatal("wrong type should be empty")
 	}
