@@ -35,14 +35,15 @@ type ResetCompleteResponse struct {
 }
 
 type ButtonState struct {
-	Settings   Settings
-	LastUpdate time.Time
+	Settings   Settings  `json:"settings"`
+	LastUpdate time.Time `json:"lastUpdate"`
 }
 
 type SettingsManager struct {
 	mu           sync.Mutex
 	buttonStates map[string]ButtonState
 	tickers      map[string]*time.Ticker
+	onTick       func(contextID string, settings Settings)
 }
 
 func NewSettingsManager() *SettingsManager {
@@ -82,16 +83,30 @@ func (sm *SettingsManager) UpdateButtonState(contextID string, settings Settings
 	}
 	sm.StoreButtonState(contextID, state)
 	if settings.AutoIncrement {
-		sm.startAutoIncrement(contextID)
+		sm.ensureAutoIncrement(contextID)
 	} else {
 		sm.stopAutoIncrement(contextID)
 	}
 }
 
+func (sm *SettingsManager) ensureAutoIncrement(contextID string) {
+	sm.mu.Lock()
+	_, running := sm.tickers[contextID]
+	sm.mu.Unlock()
+	if running {
+		return
+	}
+	sm.startAutoIncrement(contextID)
+}
+
 func (sm *SettingsManager) startAutoIncrement(contextID string) {
-	sm.stopAutoIncrement(contextID)
 	ticker := time.NewTicker(2 * time.Second)
 	sm.mu.Lock()
+	if _, running := sm.tickers[contextID]; running {
+		sm.mu.Unlock()
+		ticker.Stop()
+		return
+	}
 	sm.tickers[contextID] = ticker
 	sm.mu.Unlock()
 
@@ -99,15 +114,15 @@ func (sm *SettingsManager) startAutoIncrement(contextID string) {
 		for range ticker.C {
 			state, exists := sm.LoadButtonState(contextID)
 			if !exists {
-				ticker.Stop()
-				sm.mu.Lock()
-				delete(sm.tickers, contextID)
-				sm.mu.Unlock()
+				sm.stopAutoIncrement(contextID)
 				return
 			}
 			state.Settings.Counter++
 			state.LastUpdate = time.Now()
 			sm.StoreButtonState(contextID, state)
+			if sm.onTick != nil {
+				sm.onTick(contextID, state.Settings)
+			}
 		}
 	}()
 }
@@ -149,6 +164,15 @@ func run(ctx context.Context) error {
 	client := streamdeck.NewClient(ctx, params)
 	sm := NewSettingsManager()
 	action := streamdeck.NewAction[Settings](client, "dev.samwho.streamdeck.settings_manager")
+	sm.onTick = func(contextID string, settings Settings) {
+		for _, inst := range action.Contexts() {
+			if sdcontext.Context(inst) == contextID {
+				_ = action.SetSettings(inst, settings)
+				_ = applyVisuals(inst, action, settings)
+				return
+			}
+		}
+	}
 
 	action.OnWillAppear(func(ctx context.Context, e streamdeck.WillAppearEvent[Settings]) error {
 		if e.Payload.Settings.ButtonText == "" {
@@ -189,12 +213,22 @@ func run(ctx context.Context) error {
 				States: sm.GetAllButtonStates(),
 			})
 		case "resetAll":
-			sm.mu.Lock()
-			for key, value := range sm.buttonStates {
-				value.Settings.Counter = 0
-				sm.buttonStates[key] = value
+			for _, inst := range action.Contexts() {
+				id := sdcontext.Context(inst)
+				state, ok := sm.LoadButtonState(id)
+				if !ok {
+					state.Settings.ButtonText = "Click Me"
+					state.Settings.Color = "blue"
+				}
+				state.Settings.Counter = 0
+				sm.UpdateButtonState(id, state.Settings)
+				if err := action.SetSettings(inst, state.Settings); err != nil {
+					return err
+				}
+				if err := applyVisuals(inst, action, state.Settings); err != nil {
+					return err
+				}
 			}
-			sm.mu.Unlock()
 			return action.SendToPropertyInspector(ctx, ResetCompleteResponse{Action: "resetComplete"})
 		}
 		return nil
@@ -215,27 +249,40 @@ func applyVisuals(ctx context.Context, action *streamdeck.Action[Settings], sett
 	return action.SetTitle(ctx, title, streamdeck.HardwareAndSoftware)
 }
 
-func createBackground(colorName string) image.Image {
-	img := image.NewRGBA(image.Rect(0, 0, 72, 72))
-	var bgColor color.Color
+func accent(colorName string) color.RGBA {
 	switch colorName {
 	case "red":
-		bgColor = color.RGBA{R: 255, A: 255}
+		return color.RGBA{R: 226, G: 75, B: 74, A: 255}
 	case "green":
-		bgColor = color.RGBA{G: 255, A: 255}
-	case "blue":
-		bgColor = color.RGBA{B: 255, A: 255}
+		return color.RGBA{R: 61, G: 204, B: 122, A: 255}
 	case "yellow":
-		bgColor = color.RGBA{R: 255, G: 255, A: 255}
+		return color.RGBA{R: 230, G: 192, B: 74, A: 255}
 	case "purple":
-		bgColor = color.RGBA{R: 128, B: 128, A: 255}
+		return color.RGBA{R: 155, G: 107, B: 255, A: 255}
 	default:
-		bgColor = color.RGBA{R: 64, G: 64, B: 64, A: 255}
+		return color.RGBA{R: 61, G: 126, B: 255, A: 255}
 	}
-	for x := 0; x < 72; x++ {
-		for y := 0; y < 72; y++ {
-			img.Set(x, y, bgColor)
+}
+
+func fillRect(img *image.RGBA, x0, y0, x1, y1 int, c color.Color) {
+	for y := y0; y < y1; y++ {
+		for x := x0; x < x1; x++ {
+			img.Set(x, y, c)
 		}
+	}
+}
+
+func createBackground(colorName string) image.Image {
+	const size = 72
+	img := image.NewRGBA(image.Rect(0, 0, size, size))
+	fillRect(img, 0, 0, size, size, color.RGBA{R: 44, G: 44, B: 44, A: 255})
+	fillRect(img, 0, size-6, size, size, accent(colorName))
+
+	white := color.RGBA{R: 255, G: 255, B: 255, A: 255}
+	type slider struct{ x, knobY int }
+	for _, s := range []slider{{20, 22}, {34, 30}, {48, 18}} {
+		fillRect(img, s.x, 14, s.x+4, 50, white)
+		fillRect(img, s.x-3, s.knobY, s.x+7, s.knobY+6, white)
 	}
 	return img
 }

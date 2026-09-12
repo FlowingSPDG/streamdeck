@@ -2,10 +2,13 @@
   "SDKVersion": 2,
   "Author": "FlowingSPDG",
   "CodePath": "settings_manager",
-  "PropertyInspectorPath": "settings_manager_property_inspector.html",
-  "Description": "Settings Manager example with typed per-instance state",
+  "CodePathWin": "settings_manager.exe",
+  "PropertyInspectorPath": "ui/inspector.html",
+  "Description": "Manage typed per-instance settings from the Property Inspector",
   "Name": "Settings Manager",
-  "Icon": "images/icon",
+  "Icon": "imgs/plugin.svg",
+  "Category": "Settings Manager",
+  "CategoryIcon": "imgs/plugin.svg",
   "URL": "https://github.com/FlowingSPDG/streamdeck",
   "Version": "1.0.0",
   "OS": [
@@ -19,20 +22,22 @@
     }
   ],
   "Software": {
-    "MinimumVersion": "4.1"
+    "MinimumVersion": "6.5"
   },
   "Actions": [
     {
-      "Icon": "images/icon",
+      "Icon": "imgs/action.svg",
       "Name": "Settings Manager",
       "States": [
         {
-          "Image": "images/icon"
+          "Image": "imgs/key.svg",
+          "TitleAlignment": "bottom",
+          "FontSize": "11"
         }
       ],
-      "Tooltip": "Settings Manager",
+      "Tooltip": "Typed per-instance settings",
       "UUID": "dev.samwho.streamdeck.settings_manager",
-      "PropertyInspectorPath": "settings_manager_property_inspector.html"
+      "PropertyInspectorPath": "ui/inspector.html"
     }
   ]
 }
