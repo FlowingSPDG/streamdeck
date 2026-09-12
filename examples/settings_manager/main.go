@@ -163,7 +163,7 @@ func run(ctx context.Context) error {
 
 	client := streamdeck.NewClient(ctx, params)
 	sm := NewSettingsManager()
-	action := streamdeck.NewAction[Settings](client, "dev.samwho.streamdeck.settings_manager")
+	action := streamdeck.NewAction[Settings](client, "dev.samwho.streamdeck.settings-manager")
 	sm.onTick = func(contextID string, settings Settings) {
 		for _, inst := range action.Contexts() {
 			if sdcontext.Context(inst) == contextID {
