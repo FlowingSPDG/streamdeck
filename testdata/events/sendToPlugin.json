@@ -1,0 +1,8 @@
+{
+  "action": "com.elgato.example.action",
+  "event": "sendToPlugin",
+  "context": "ctx-1",
+  "payload": {
+    "action": "reset"
+  }
+}

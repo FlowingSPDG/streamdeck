@@ -1,0 +1,24 @@
+{
+  "Actions": [
+    {
+      "Name": "Plus Dial",
+      "UUID": "dev.samwho.streamdeck.plus",
+      "Controllers": ["Encoder"],
+      "Encoder": {
+        "layout": "$B1"
+      },
+      "Tooltip": "Rotate to change a value"
+    }
+  ],
+  "SDKVersion": 2,
+  "Author": "FlowingSPDG",
+  "CodePath": "plus.exe",
+  "Description": "Stream Deck + dial and touch example",
+  "Name": "Plus Dial",
+  "Version": "0.1",
+  "OS": [
+    { "Platform": "mac", "MinimumVersion": "10.11" },
+    { "Platform": "windows", "MinimumVersion": "10" }
+  ],
+  "Software": { "MinimumVersion": "6.1" }
+}

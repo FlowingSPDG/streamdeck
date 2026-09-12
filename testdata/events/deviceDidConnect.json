@@ -1,0 +1,9 @@
+{
+  "event": "deviceDidConnect",
+  "device": "dev-1",
+  "deviceInfo": {
+    "name": "Stream Deck",
+    "type": 0,
+    "size": {"columns": 5, "rows": 3}
+  }
+}

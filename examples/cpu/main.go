@@ -2,21 +2,18 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"image"
 	"image/color"
 	"log"
 	"os"
-	"path"
-	"path/filepath"
-	"strings"
+	"os/signal"
 	"sync"
 	"time"
 
-	"github.com/FlowingSPDG/streamdeck"
-	sdcontext "github.com/FlowingSPDG/streamdeck/context"
-	"github.com/shirou/gopsutil/cpu"
+	"github.com/FlowingSPDG/streamdeck/v2"
+	sdcontext "github.com/FlowingSPDG/streamdeck/v2/context"
+	"github.com/shirou/gopsutil/v4/cpu"
 )
 
 const (
@@ -24,125 +21,111 @@ const (
 	imgY = 72
 )
 
+type Settings struct{}
+
 type PropertyInspectorSettings struct {
 	ShowText bool `json:"showText,omitempty"`
 }
 
 func main() {
-	exePath, err := os.Executable()
-	if err != nil {
-		panic(err)
-	}
-	exeDir := filepath.Dir(exePath)
-	f, err := os.Create(path.Join(exeDir, "streamdeck-cpu.log"))
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	// log.SetOutput(f)
-	log.SetOutput(os.Stdout)
-
-	ctx := context.Background()
-	if err := run(ctx); err != nil {
-		log.Fatalf("%v\n", err)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	if err := run(ctx); err != nil && ctx.Err() == nil {
+		log.Fatal(err)
 	}
 }
 
 func run(ctx context.Context) error {
-	fmt.Println("args:", strings.Join(os.Args, " "))
 	params, err := streamdeck.ParseRegistrationParams(os.Args)
 	if err != nil {
 		return err
 	}
-	fmt.Println("params:", params)
 
 	client := streamdeck.NewClient(ctx, params)
-	setup(client)
+	action := streamdeck.NewAction[Settings](client, "dev.samwho.streamdeck.cpu")
 
-	return client.Run(ctx)
-}
+	var (
+		piMu    sync.RWMutex
+		pi      PropertyInspectorSettings
+		ctxMu   sync.RWMutex
+		visible = map[string]struct{}{}
+	)
 
-func setup(client *streamdeck.Client) {
-	action := client.Action("dev.samwho.streamdeck.cpu")
-
-	pi := &PropertyInspectorSettings{}
-	contexts := sync.Map{}
-
-	action.RegisterHandler(streamdeck.SendToPlugin, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		b, _ := json.MarshalIndent(event, "", "	")
-		fmt.Printf("event:%s\n", b)
-		return event.UnmarshalPayload(pi)
-	})
-
-	action.RegisterHandler(streamdeck.KeyDown, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		b, _ := json.MarshalIndent(event, "", "	")
-		fmt.Printf("event:%s\n", b)
-		return event.UnmarshalPayload(pi)
-	})
-
-	action.RegisterHandler(streamdeck.KeyUp, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		b, _ := json.MarshalIndent(event, "", "	")
-		fmt.Printf("event:%s\n", b)
-		return event.UnmarshalPayload(pi)
-	})
-
-	action.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		b, _ := json.MarshalIndent(event, "", "	")
-		fmt.Printf("event:%s\n", b)
-		contexts.Store(event.Context, struct{}{})
+	action.OnPropertyInspectorMessage(func(ctx context.Context, msg PropertyInspectorSettings) error {
+		piMu.Lock()
+		pi = msg
+		piMu.Unlock()
 		return nil
 	})
 
-	action.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		b, _ := json.MarshalIndent(event, "", "	")
-		fmt.Printf("event:%s\n", b)
-		contexts.Delete(event.Context)
+	action.OnWillAppear(func(ctx context.Context, e streamdeck.WillAppearEvent[Settings]) error {
+		ctxMu.Lock()
+		visible[e.Context] = struct{}{}
+		ctxMu.Unlock()
 		return nil
 	})
 
-	readings := make([]float64, imgX, imgX)
+	action.OnWillDisappear(func(ctx context.Context, e streamdeck.WillDisappearEvent[Settings]) error {
+		ctxMu.Lock()
+		delete(visible, e.Context)
+		ctxMu.Unlock()
+		return nil
+	})
+
+	readings := make([]float64, imgX)
 
 	go func() {
-		for range time.Tick(time.Second / 4) {
-			for i := 0; i < imgX-1; i++ {
-				readings[i] = readings[i+1]
-			}
-
-			r, err := cpu.Percent(0, false)
-			if err != nil {
-				fmt.Printf("error getting CPU reading: %v\n", err)
-			}
-			readings[imgX-1] = r[0]
-
-			contexts.Range(func(key, value any) bool {
-				ctxStr := value.(string)
-				ctx := context.Background()
-				ctx = sdcontext.WithContext(ctx, ctxStr)
+		ticker := time.NewTicker(time.Second / 4)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				copy(readings, readings[1:])
+				r, err := cpu.Percent(0, false)
+				if err != nil || len(r) == 0 {
+					log.Printf("cpu.Percent: %v", err)
+					continue
+				}
+				readings[imgX-1] = r[0]
 
 				img, err := streamdeck.Image(graph(readings))
 				if err != nil {
-					fmt.Printf("error creating image: %v\n", err)
-					return true
+					log.Printf("image: %v", err)
+					continue
 				}
 
-				if err := client.SetImage(ctx, img, streamdeck.HardwareAndSoftware); err != nil {
-					fmt.Printf("error setting image: %v\n", err)
-					return true
-				}
+				piMu.RLock()
+				showText := pi.ShowText
+				piMu.RUnlock()
 
-				title := ""
-				if pi.ShowText {
-					title = fmt.Sprintf("CPU\n%d%%", int(r[0]))
+				ctxMu.RLock()
+				ids := make([]string, 0, len(visible))
+				for id := range visible {
+					ids = append(ids, id)
 				}
+				ctxMu.RUnlock()
 
-				if err := client.SetTitle(ctx, title, streamdeck.HardwareAndSoftware); err != nil {
-					fmt.Printf("error setting title: %v\n", err)
-					return true
+				for _, id := range ids {
+					sdctx := sdcontext.WithContext(ctx, id)
+					if err := action.SetImage(sdctx, img, streamdeck.HardwareAndSoftware); err != nil {
+						log.Printf("set image: %v", err)
+						continue
+					}
+					title := ""
+					if showText {
+						title = fmt.Sprintf("CPU\n%d%%", int(r[0]))
+					}
+					if err := action.SetTitle(sdctx, title, streamdeck.HardwareAndSoftware); err != nil {
+						log.Printf("set title: %v", err)
+					}
 				}
-				return true
-			})
+			}
 		}
 	}()
+
+	return client.Run(ctx)
 }
 
 func graph(readings []float64) image.Image {
@@ -150,11 +133,17 @@ func graph(readings []float64) image.Image {
 	for x := 0; x < imgX; x++ {
 		reading := readings[x] / 100
 		upto := int(float64(imgY) * reading)
+		if upto < 0 {
+			upto = 0
+		}
+		if upto > imgY {
+			upto = imgY
+		}
 		for y := 0; y < upto; y++ {
-			img.Set(x, imgY-y, color.RGBA{R: 255, A: 255})
+			img.Set(x, imgY-1-y, color.RGBA{R: 255, A: 255})
 		}
 		for y := upto; y < imgY; y++ {
-			img.Set(x, imgY-y, color.Black)
+			img.Set(x, imgY-1-y, color.Black)
 		}
 	}
 	return img

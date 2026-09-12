@@ -3,7 +3,7 @@
   "Author": "FlowingSPDG",
   "CodePath": "settings_manager",
   "PropertyInspectorPath": "settings_manager_property_inspector.html",
-  "Description": "Settings Manager example using xsync.Map for goroutine-safe payload storage",
+  "Description": "Settings Manager example with typed per-instance state",
   "Name": "Settings Manager",
   "Icon": "images/icon",
   "URL": "https://github.com/FlowingSPDG/streamdeck",
@@ -30,7 +30,7 @@
           "Image": "images/icon"
         }
       ],
-      "Tooltip": "Settings Manager with xsync.Map",
+      "Tooltip": "Settings Manager",
       "UUID": "dev.samwho.streamdeck.settings_manager",
       "PropertyInspectorPath": "settings_manager_property_inspector.html"
     }

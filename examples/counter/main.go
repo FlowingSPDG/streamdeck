@@ -4,10 +4,12 @@ import (
 	"context"
 	"image"
 	"image/color"
+	"log"
 	"os"
+	"os/signal"
 	"strconv"
 
-	"github.com/FlowingSPDG/streamdeck"
+	"github.com/FlowingSPDG/streamdeck/v2"
 )
 
 type Settings struct {
@@ -15,9 +17,10 @@ type Settings struct {
 }
 
 func main() {
-	ctx := context.Background()
-	if err := run(ctx); err != nil {
-		panic(err)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	if err := run(ctx); err != nil && ctx.Err() == nil {
+		log.Fatal(err)
 	}
 }
 
@@ -28,61 +31,33 @@ func run(ctx context.Context) error {
 	}
 
 	client := streamdeck.NewClient(ctx, params)
-	setup(client)
+	action := streamdeck.NewAction[Settings](client, "dev.samwho.streamdeck.counter")
 
-	return client.Run(ctx)
-}
-
-func setup(client *streamdeck.Client) {
-	action := client.Action("dev.samwho.streamdeck.counter")
-
-	action.RegisterHandler(streamdeck.WillAppear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		// Settings will be passed through the event.
-		// So we don't need to store them internally.
-		// But in case you want to store them, you should store the settings since the settings will appear at this event
-		var p streamdeck.WillAppearPayload[Settings]
-		if err := event.UnmarshalPayload(&p); err != nil {
-			return err
-		}
-
+	action.OnWillAppear(func(ctx context.Context, e streamdeck.WillAppearEvent[Settings]) error {
 		bg, err := streamdeck.Image(background())
 		if err != nil {
 			return err
 		}
-
-		if err := client.SetImage(ctx, bg, streamdeck.HardwareAndSoftware); err != nil {
+		if err := action.SetImage(ctx, bg, streamdeck.HardwareAndSoftware); err != nil {
 			return err
 		}
-
-		return client.SetTitle(ctx, strconv.Itoa(p.Settings.Counter), streamdeck.HardwareAndSoftware)
+		return action.SetTitle(ctx, strconv.Itoa(e.Payload.Settings.Counter), streamdeck.HardwareAndSoftware)
 	})
 
-	action.RegisterHandler(streamdeck.WillDisappear, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		// Settings will be passed through the event.
-		// So we don't need to store them internally.
-		// But in case you want to store them, you should remove the settings since the settings will disappear at this event
-		var p streamdeck.WillDisappearPayload[Settings]
-		if err := event.UnmarshalPayload(&p); err != nil {
-			return err
-		}
-
-		p.Settings.Counter = 0
-		return client.SetSettings(ctx, p.Settings)
+	action.OnWillDisappear(func(ctx context.Context, e streamdeck.WillDisappearEvent[Settings]) error {
+		e.Payload.Settings.Counter = 0
+		return action.SetSettings(ctx, e.Payload.Settings)
 	})
 
-	action.RegisterHandler(streamdeck.KeyDown, func(ctx context.Context, client *streamdeck.Client, event streamdeck.Event) error {
-		var p streamdeck.KeyDownPayload[Settings]
-		if err := event.UnmarshalPayload(&p); err != nil {
+	action.OnKeyDown(func(ctx context.Context, e streamdeck.KeyDownEvent[Settings]) error {
+		e.Payload.Settings.Counter++
+		if err := action.SetSettings(ctx, e.Payload.Settings); err != nil {
 			return err
 		}
-
-		p.Settings.Counter++
-		if err := client.SetSettings(ctx, p.Settings); err != nil {
-			return err
-		}
-
-		return client.SetTitle(ctx, strconv.Itoa(p.Settings.Counter), streamdeck.HardwareAndSoftware)
+		return action.SetTitle(ctx, strconv.Itoa(e.Payload.Settings.Counter), streamdeck.HardwareAndSoftware)
 	})
+
+	return client.Run(ctx)
 }
 
 func background() image.Image {

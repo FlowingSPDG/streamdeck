@@ -1,8 +1,6 @@
 package context
 
-import (
-	"context"
-)
+import "context"
 
 type keyType int
 
@@ -48,7 +46,7 @@ func get(ctx context.Context, key keyType) string {
 
 	valStr, ok := val.(string)
 	if !ok {
-		panic("found non-string in context")
+		return ""
 	}
 
 	return valStr

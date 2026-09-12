@@ -1,0 +1,12 @@
+{
+  "action": "com.elgato.example.action",
+  "event": "willAppear",
+  "context": "ctx-1",
+  "device": "dev-1",
+  "payload": {
+    "controller": "Keypad",
+    "coordinates": {"column": 1, "row": 2},
+    "settings": {"buttonText": "Hello"},
+    "isInMultiAction": false
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "event": "setTitle",
+  "context": "ctx-1",
+  "payload": {
+    "title": "Hello",
+    "target": 0
+  }
+}

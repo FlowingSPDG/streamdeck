@@ -1,0 +1,15 @@
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+linters-settings:
+  staticcheck:
+    checks: ["all"]
+
+run:
+  timeout: 5m

@@ -1,0 +1,5 @@
+{
+  "event": "getSettings",
+  "context": "ctx-1",
+  "id": "1"
+}
