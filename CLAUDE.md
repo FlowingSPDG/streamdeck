@@ -27,7 +27,7 @@ Example plugins live in `examples/` as a separate module (`examples/go.mod`) wir
 - `Action[S]` (`action.go`) is a typed handle for one action UUID. Settings type `S` is fixed at registration.
 - Incoming events use `Event.Payload json.RawMessage`. Typed handlers call `Event.Unmarshal[T]()`.
 - Outgoing messages use the unexported `outgoingEvent` type.
-- `dispatch.go` serializes handlers per Stream Deck context so `GetSettings` can block without stalling the read loop.
+- `dispatch.go` serializes handlers per Stream Deck context so `GetSettings` can block without stalling the read loop. Each context has an unbounded FIFO mailbox: the reader only takes a mutex, then a worker drains the burst after the current handler returns. Handler panics are recovered so one button cannot kill its worker.
 - `context/context.go` stores action/context/device IDs on `context.Context`.
 
 ## Client lifecycle

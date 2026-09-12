@@ -34,18 +34,6 @@ func NewAction[S any](c *Client, uuid string) *Action[S] {
 		handlers: make(map[EventName][]func(context.Context, Event) error),
 		contexts: make(map[string]context.Context),
 	}
-	a.handlers[WillAppear] = []func(context.Context, Event) error{
-		func(ctx context.Context, _ Event) error {
-			a.addContext(ctx)
-			return nil
-		},
-	}
-	a.handlers[WillDisappear] = []func(context.Context, Event) error{
-		func(ctx context.Context, _ Event) error {
-			a.removeContext(ctx)
-			return nil
-		},
-	}
 	c.actions[uuid] = a
 	return a
 }
@@ -53,15 +41,24 @@ func NewAction[S any](c *Client, uuid string) *Action[S] {
 func (a *Action[S]) actionUUID() string { return a.uuid }
 
 func (a *Action[S]) dispatch(ctx context.Context, ev Event) error {
+	if ev.Event == WillAppear {
+		a.addContext(ctx)
+	}
+
 	a.mu.RLock()
-	hs := append([]func(context.Context, Event) error(nil), a.handlers[ev.Event]...)
+	hs := a.handlers[ev.Event]
 	a.mu.RUnlock()
 
 	var lastErr error
 	for _, handler := range hs {
-		if err := handler(ctx, ev); err != nil {
+		if err := callHandler(func() error { return handler(ctx, ev) }); err != nil {
 			lastErr = err
+			a.client.handleError(ctx, err)
 		}
+	}
+
+	if ev.Event == WillDisappear {
+		a.removeContext(ctx)
 	}
 	return lastErr
 }
@@ -72,11 +69,11 @@ func (a *Action[S]) UUID() string { return a.uuid }
 // Client returns the parent client.
 func (a *Action[S]) Client() *Client { return a.client }
 
-// RegisterHandler appends a raw handler for event. Handlers are snapshotted before execution.
+// RegisterHandler appends a raw handler for event. The handler list is copied on write so dispatch never holds the lock.
 func (a *Action[S]) RegisterHandler(event EventName, handler func(context.Context, Event) error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.handlers[event] = append(a.handlers[event], handler)
+	a.handlers[event] = appendCopy(a.handlers[event], handler)
 }
 
 func (a *Action[S]) onPayload[P any](name EventName, h func(context.Context, ActionEvent[P]) error) {
@@ -175,7 +172,7 @@ func (a *Action[S]) GetSettings(ctx context.Context) (S, error) {
 	var zero S
 	resp, err := a.client.request(ctx, outgoingEvent{
 		Event:   GetSettings,
-		Context: firstNonEmpty(sdcontext.Context(ctx), ""),
+		Context: sdcontext.Context(ctx),
 	})
 	if err != nil {
 		return zero, err

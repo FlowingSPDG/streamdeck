@@ -36,7 +36,9 @@ func WithWebSocketURL(u string) ClientOption {
 	}
 }
 
-// WithQueueSize sets the per-context event queue depth. Zero or negative uses the default.
+// WithQueueSize sets the initial per-context event buffer capacity.
+// The mailbox grows if a handler is slower than incoming events (for example dialRotate bursts).
+// Zero or negative uses the default.
 func WithQueueSize(n int) ClientOption {
 	return func(c *Client) {
 		if n > 0 {

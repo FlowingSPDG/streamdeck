@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -318,6 +319,236 @@ func TestPropertyInspectorMessage(t *testing.T) {
 	inbox := f.waitInbox(t, 2)
 	if inbox[1]["event"] != "sendToPropertyInspector" {
 		t.Fatalf("reply = %+v", inbox[1])
+	}
+}
+
+func TestWillDisappearKeepsContextDuringHandler(t *testing.T) {
+	f := newFakeDeck(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	client := streamdeck.NewClient(ctx, testParams(), streamdeck.WithWebSocketURL(f.url))
+	action := streamdeck.NewAction[struct{}](client, "com.elgato.example.action")
+	seen := make(chan int, 1)
+	action.OnWillAppear(func(ctx context.Context, e streamdeck.WillAppearEvent[struct{}]) error {
+		return nil
+	})
+	action.OnWillDisappear(func(ctx context.Context, e streamdeck.WillDisappearEvent[struct{}]) error {
+		seen <- len(action.Contexts())
+		return nil
+	})
+
+	go func() { _ = client.Run(ctx) }()
+	f.waitInbox(t, 1)
+
+	var appear map[string]any
+	if err := json.Unmarshal(mustReadFile(t, "testdata/events/willAppear.json"), &appear); err != nil {
+		t.Fatal(err)
+	}
+	f.send <- appear
+	time.Sleep(50 * time.Millisecond)
+	disappear := map[string]any{
+		"action":  appear["action"],
+		"event":   "willDisappear",
+		"context": appear["context"],
+		"device":  appear["device"],
+		"payload": appear["payload"],
+	}
+	f.send <- disappear
+
+	select {
+	case n := <-seen:
+		if n != 1 {
+			t.Fatalf("contexts during willDisappear = %d", n)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout")
+	}
+}
+
+func TestHandlerPanicDoesNotStopQueue(t *testing.T) {
+	f := newFakeDeck(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	client := streamdeck.NewClient(ctx, testParams(), streamdeck.WithWebSocketURL(f.url))
+	action := streamdeck.NewAction[map[string]int](client, "com.elgato.example.action")
+	var n atomic.Int32
+	done := make(chan struct{})
+	action.OnKeyDown(func(ctx context.Context, e streamdeck.KeyDownEvent[map[string]int]) error {
+		if n.Add(1) == 1 {
+			panic("boom")
+		}
+		close(done)
+		return nil
+	})
+
+	go func() { _ = client.Run(ctx) }()
+	f.waitInbox(t, 1)
+
+	var ev map[string]any
+	if err := json.Unmarshal(mustReadFile(t, "testdata/events/keyDown.json"), &ev); err != nil {
+		t.Fatal(err)
+	}
+	f.send <- ev
+	f.send <- ev
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("queue died after panic")
+	}
+}
+
+func TestContextQueuePreservesOrderUnderBurst(t *testing.T) {
+	f := newFakeDeck(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	client := streamdeck.NewClient(ctx, testParams(),
+		streamdeck.WithWebSocketURL(f.url),
+		streamdeck.WithQueueSize(2),
+	)
+	action := streamdeck.NewAction[map[string]int](client, "com.elgato.example.action")
+
+	const n = 32
+	var (
+		mu  sync.Mutex
+		got []int
+	)
+	done := make(chan struct{})
+	started := make(chan struct{})
+	block := make(chan struct{})
+	var holdFirst atomic.Bool
+	holdFirst.Store(true)
+	action.OnKeyDown(func(ctx context.Context, e streamdeck.KeyDownEvent[map[string]int]) error {
+		if holdFirst.CompareAndSwap(true, false) {
+			close(started)
+			<-block
+		}
+		mu.Lock()
+		got = append(got, e.Payload.Settings["n"])
+		if len(got) == n {
+			close(done)
+		}
+		mu.Unlock()
+		return nil
+	})
+
+	go func() { _ = client.Run(ctx) }()
+	f.waitInbox(t, 1)
+
+	for i := range n {
+		f.send <- map[string]any{
+			"action":  "com.elgato.example.action",
+			"event":   "keyDown",
+			"context": "burst-ctx",
+			"payload": map[string]any{"settings": map[string]int{"n": i}},
+		}
+	}
+
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("first handler did not start")
+	}
+	time.Sleep(30 * time.Millisecond)
+	close(block)
+
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("timeout waiting for burst")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(got) != n {
+		t.Fatalf("len=%d got=%v", len(got), got)
+	}
+	for i, v := range got {
+		if v != i {
+			t.Fatalf("order[%d]=%d, full=%v", i, v, got)
+		}
+	}
+}
+
+func TestGetSettingsFromHandlerDoesNotDeadlock(t *testing.T) {
+	f := newFakeDeck(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	client := streamdeck.NewClient(ctx, testParams(), streamdeck.WithWebSocketURL(f.url))
+	action := streamdeck.NewAction[map[string]int](client, "com.elgato.example.action")
+	got := make(chan int, 1)
+	action.OnKeyDown(func(ctx context.Context, e streamdeck.KeyDownEvent[map[string]int]) error {
+		s, err := action.GetSettings(ctx)
+		if err != nil {
+			return err
+		}
+		got <- s["counter"]
+		return nil
+	})
+
+	go func() { _ = client.Run(ctx) }()
+	f.waitInbox(t, 1)
+
+	var ev map[string]any
+	if err := json.Unmarshal(mustReadFile(t, "testdata/events/keyDown.json"), &ev); err != nil {
+		t.Fatal(err)
+	}
+	f.send <- ev
+
+	inbox := f.waitInbox(t, 2)
+	id, _ := inbox[1]["id"].(string)
+	if inbox[1]["event"] != "getSettings" || id == "" {
+		t.Fatalf("getSettings = %+v", inbox[1])
+	}
+
+	var reply map[string]any
+	if err := json.Unmarshal(mustReadFile(t, "testdata/events/didReceiveSettings.json"), &reply); err != nil {
+		t.Fatal(err)
+	}
+	reply["id"] = id
+	f.send <- reply
+
+	select {
+	case n := <-got:
+		if n != 4 {
+			t.Fatalf("counter=%d", n)
+		}
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+}
+
+func TestDeviceDidConnect(t *testing.T) {
+	f := newFakeDeck(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	client := streamdeck.NewClient(ctx, testParams(), streamdeck.WithWebSocketURL(f.url))
+	got := make(chan streamdeck.DeviceEvent, 1)
+	client.OnDeviceDidConnect(func(ctx context.Context, e streamdeck.DeviceEvent) error {
+		got <- e
+		return nil
+	})
+
+	go func() { _ = client.Run(ctx) }()
+	f.waitInbox(t, 1)
+
+	var ev map[string]any
+	if err := json.Unmarshal(mustReadFile(t, "testdata/events/deviceDidConnect.json"), &ev); err != nil {
+		t.Fatal(err)
+	}
+	f.send <- ev
+
+	select {
+	case e := <-got:
+		if e.Device != "dev-1" || e.DeviceInfo.Name != "Stream Deck" || e.DeviceInfo.Type != streamdeck.StreamDeck {
+			t.Fatalf("device event = %+v", e)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout")
 	}
 }
 

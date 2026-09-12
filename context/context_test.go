@@ -17,6 +17,13 @@ func TestContextRoundTrip(t *testing.T) {
 	}
 }
 
+func TestWithIDs(t *testing.T) {
+	ctx := sdcontext.WithIDs(context.Background(), "ctx", "dev", "act")
+	if sdcontext.Context(ctx) != "ctx" || sdcontext.Device(ctx) != "dev" || sdcontext.Action(ctx) != "act" {
+		t.Fatalf("got %q %q %q", sdcontext.Context(ctx), sdcontext.Device(ctx), sdcontext.Action(ctx))
+	}
+}
+
 func TestContextNilAndWrongType(t *testing.T) {
 	if sdcontext.Context(nil) != "" {
 		t.Fatal("nil context should be empty")

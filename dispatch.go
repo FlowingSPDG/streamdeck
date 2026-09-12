@@ -2,7 +2,9 @@ package streamdeck
 
 import (
 	"context"
+	"fmt"
 	"strconv"
+	"sync"
 )
 
 type queuedEvent struct {
@@ -10,9 +12,43 @@ type queuedEvent struct {
 	ev  Event
 }
 
+// eventQueue is an unbounded, FIFO mailbox. The WebSocket reader only takes a
+// mutex and never blocks on a handler. A burst such as dialRotate is drained
+// in one batch after the current handler returns.
 type eventQueue struct {
-	ch     chan queuedEvent
+	mu     sync.Mutex
+	items  []queuedEvent
+	wait   chan struct{}
 	cancel context.CancelFunc
+}
+
+func newEventQueue(cancel context.CancelFunc, capHint int) *eventQueue {
+	if capHint < 1 {
+		capHint = defaultQueueSize
+	}
+	return &eventQueue{
+		items:  make([]queuedEvent, 0, capHint),
+		wait:   make(chan struct{}, 1),
+		cancel: cancel,
+	}
+}
+
+func (q *eventQueue) push(item queuedEvent) {
+	q.mu.Lock()
+	q.items = append(q.items, item)
+	q.mu.Unlock()
+	select {
+	case q.wait <- struct{}{}:
+	default:
+	}
+}
+
+func (q *eventQueue) take() []queuedEvent {
+	q.mu.Lock()
+	items := q.items
+	q.items = nil
+	q.mu.Unlock()
+	return items
 }
 
 func (c *Client) nextRequestID() string {
@@ -63,12 +99,10 @@ func (c *Client) deliverPending(ev Event) bool {
 }
 
 func (c *Client) enqueue(ctx context.Context, ev Event) {
-	key := ev.Context
-	q := c.getOrCreateQueue(key)
-	select {
-	case q.ch <- queuedEvent{ctx: ctx, ev: ev}:
-	case <-ctx.Done():
+	if ctx.Err() != nil {
+		return
 	}
+	c.getOrCreateQueue(ev.Context).push(queuedEvent{ctx: ctx, ev: ev})
 }
 
 func (c *Client) getOrCreateQueue(key string) *eventQueue {
@@ -77,46 +111,53 @@ func (c *Client) getOrCreateQueue(key string) *eventQueue {
 	if q, ok := c.queues[key]; ok {
 		return q
 	}
-	qctx, cancel := context.WithCancel(context.Background())
-	q := &eventQueue{
-		ch:     make(chan queuedEvent, c.queueSize),
-		cancel: cancel,
-	}
+	qctx, cancel := context.WithCancel(c.runCtx())
+	q := newEventQueue(cancel, c.queueSize)
 	c.queues[key] = q
-	go c.runQueue(qctx, q)
+	c.workers.Add(1)
+	go func() {
+		defer c.workers.Done()
+		c.runQueue(qctx, q)
+	}()
 	return q
+}
+
+func (c *Client) runCtx() context.Context {
+	c.runCtxMu.RLock()
+	defer c.runCtxMu.RUnlock()
+	if c.runCancelCtx != nil {
+		return c.runCancelCtx
+	}
+	return context.Background()
+}
+
+func (c *Client) setRunCtx(ctx context.Context) {
+	c.runCtxMu.Lock()
+	c.runCancelCtx = ctx
+	c.runCtxMu.Unlock()
 }
 
 func (c *Client) runQueue(ctx context.Context, q *eventQueue) {
 	for {
-		select {
-		case <-ctx.Done():
-			return
-		case item, ok := <-q.ch:
-			if !ok {
+		items := q.take()
+		if len(items) == 0 {
+			select {
+			case <-ctx.Done():
+				return
+			case <-q.wait:
+			}
+			continue
+		}
+		for i := range items {
+			if ctx.Err() != nil {
 				return
 			}
-			c.handleEvent(item.ctx, item.ev)
-			if item.ev.Event == WillDisappear && item.ev.Context != "" {
-				c.removeQueue(item.ev.Context)
-			}
+			c.handleEvent(items[i].ctx, items[i].ev)
 		}
 	}
 }
 
-func (c *Client) removeQueue(key string) {
-	c.queuesMu.Lock()
-	q, ok := c.queues[key]
-	if ok {
-		delete(c.queues, key)
-	}
-	c.queuesMu.Unlock()
-	if ok {
-		q.cancel()
-	}
-}
-
-func (c *Client) stopQueues() {
+func (c *Client) cancelQueues() {
 	c.queuesMu.Lock()
 	qs := make([]*eventQueue, 0, len(c.queues))
 	for key, q := range c.queues {
@@ -134,12 +175,18 @@ func (c *Client) stopQueues() {
 }
 
 func (c *Client) handleEvent(ctx context.Context, ev Event) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			c.handleError(ctx, fmt.Errorf("panic in event handler: %v", rec))
+		}
+	}()
+
 	if ev.Action == "" {
 		c.mu.RLock()
-		hs := append([]EventHandler(nil), c.handlers[ev.Event]...)
+		hs := c.handlers[ev.Event]
 		c.mu.RUnlock()
 		for _, h := range hs {
-			c.handleError(ctx, h(ctx, c, ev))
+			c.handleError(ctx, callHandler(func() error { return h(ctx, c, ev) }))
 		}
 		return
 	}
@@ -151,5 +198,14 @@ func (c *Client) handleEvent(ctx context.Context, ev Event) {
 		c.logger.Warn("discarding event for unregistered action", "action", ev.Action, "event", ev.Event)
 		return
 	}
-	c.handleError(ctx, a.dispatch(ctx, ev))
+	_ = a.dispatch(ctx, ev)
+}
+
+func callHandler(fn func() error) (err error) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			err = fmt.Errorf("panic in event handler: %v", rec)
+		}
+	}()
+	return fn()
 }

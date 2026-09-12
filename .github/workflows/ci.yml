@@ -5,6 +5,9 @@ on:
     branches: [main, master]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ${{ matrix.os }}
@@ -20,7 +23,8 @@ jobs:
       - name: gofmt
         if: runner.os != 'Windows'
         run: |
-          unformatted=$(gofmt -l .)
+          gofmtbin="$(go env GOROOT)/bin/gofmt"
+          unformatted=$("$gofmtbin" -l .)
           if [ -n "$unformatted" ]; then
             echo "$unformatted"
             exit 1
@@ -43,11 +47,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.27.x"
-      - name: staticcheck
-        continue-on-error: true
-        run: |
-          go install honnef.co/go/tools/cmd/staticcheck@latest
-          staticcheck ./...
       - uses: golangci/golangci-lint-action@v7
         with:
-          version: latest
+          version: v2.13.2
+          args: --timeout=5m

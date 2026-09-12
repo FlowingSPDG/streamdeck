@@ -24,6 +24,12 @@ type DeviceInfo struct {
 	Size DeviceSize `json:"size,omitempty"`
 }
 
+// DeviceEvent is a deviceDidConnect, deviceDidDisconnect, or deviceDidChange message.
+type DeviceEvent struct {
+	Device     string
+	DeviceInfo DeviceInfo
+}
+
 // DeviceSize is the key grid size of a device, excluding dials and touchscreens.
 type DeviceSize struct {
 	Columns int `json:"columns,omitempty"`

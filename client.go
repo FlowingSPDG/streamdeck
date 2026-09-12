@@ -43,6 +43,10 @@ type Client struct {
 
 	queues   map[string]*eventQueue
 	queuesMu sync.Mutex
+	workers  sync.WaitGroup
+
+	runCancelCtx context.Context
+	runCtxMu     sync.RWMutex
 }
 
 // NewClient builds a client from Stream Deck registration parameters.
@@ -73,101 +77,6 @@ func (c *Client) Params() RegistrationParams {
 	return c.params
 }
 
-// On registers a handler for events that are not bound to an action UUID.
-func (c *Client) On(event EventName, handler EventHandler) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.handlers[event] = append(c.handlers[event], handler)
-}
-
-// RegisterNoActionHandler is an alias of On for events such as applicationDidLaunch.
-func (c *Client) RegisterNoActionHandler(event EventName, handler EventHandler) {
-	c.On(event, handler)
-}
-
-// OnApplicationDidLaunch registers a handler for applicationDidLaunch.
-func (c *Client) OnApplicationDidLaunch(h func(context.Context, ApplicationDidLaunchPayload) error) {
-	c.On(ApplicationDidLaunch, func(ctx context.Context, client *Client, event Event) error {
-		p, err := event.Unmarshal[ApplicationDidLaunchPayload]()
-		if err != nil {
-			return err
-		}
-		return h(ctx, p)
-	})
-}
-
-// OnApplicationDidTerminate registers a handler for applicationDidTerminate.
-func (c *Client) OnApplicationDidTerminate(h func(context.Context, ApplicationDidTerminatePayload) error) {
-	c.On(ApplicationDidTerminate, func(ctx context.Context, client *Client, event Event) error {
-		p, err := event.Unmarshal[ApplicationDidTerminatePayload]()
-		if err != nil {
-			return err
-		}
-		return h(ctx, p)
-	})
-}
-
-// OnDeviceDidConnect registers a handler for deviceDidConnect.
-func (c *Client) OnDeviceDidConnect(h func(context.Context, Event) error) {
-	c.On(DeviceDidConnect, func(ctx context.Context, _ *Client, event Event) error {
-		return h(ctx, event)
-	})
-}
-
-// OnDeviceDidDisconnect registers a handler for deviceDidDisconnect.
-func (c *Client) OnDeviceDidDisconnect(h func(context.Context, Event) error) {
-	c.On(DeviceDidDisconnect, func(ctx context.Context, _ *Client, event Event) error {
-		return h(ctx, event)
-	})
-}
-
-// OnDeviceDidChange registers a handler for deviceDidChange.
-func (c *Client) OnDeviceDidChange(h func(context.Context, Event) error) {
-	c.On(DeviceDidChange, func(ctx context.Context, _ *Client, event Event) error {
-		return h(ctx, event)
-	})
-}
-
-// OnSystemDidWakeUp registers a handler for systemDidWakeUp.
-func (c *Client) OnSystemDidWakeUp(h func(context.Context) error) {
-	c.On(SystemDidWakeUp, func(ctx context.Context, _ *Client, _ Event) error {
-		return h(ctx)
-	})
-}
-
-// OnDidReceiveDeepLink registers a handler for didReceiveDeepLink.
-func (c *Client) OnDidReceiveDeepLink(h func(context.Context, DidReceiveDeepLinkPayload) error) {
-	c.On(DidReceiveDeepLink, func(ctx context.Context, _ *Client, event Event) error {
-		p, err := event.Unmarshal[DidReceiveDeepLinkPayload]()
-		if err != nil {
-			return err
-		}
-		return h(ctx, p)
-	})
-}
-
-// OnDidReceiveGlobalSettings registers a handler for unsolicited global settings updates.
-func (c *Client) OnDidReceiveGlobalSettings[G any](h func(context.Context, G) error) {
-	c.On(DidReceiveGlobalSettings, func(ctx context.Context, _ *Client, event Event) error {
-		p, err := event.Unmarshal[DidReceiveGlobalSettingsPayload[G]]()
-		if err != nil {
-			return err
-		}
-		return h(ctx, p.Settings)
-	})
-}
-
-// OnDidReceiveSecrets registers a handler for didReceiveSecrets.
-func (c *Client) OnDidReceiveSecrets[G any](h func(context.Context, G) error) {
-	c.On(DidReceiveSecrets, func(ctx context.Context, _ *Client, event Event) error {
-		p, err := event.Unmarshal[DidReceiveSecretsPayload[G]]()
-		if err != nil {
-			return err
-		}
-		return h(ctx, p.Secrets)
-	})
-}
-
 // Run connects to Stream Deck, registers, and dispatches events until the
 // connection ends or ctx is cancelled. Stream Deck sends os.Interrupt (Ctrl+C)
 // when the app shuts down or the plugin is uninstalled; Run listens for that
@@ -175,6 +84,11 @@ func (c *Client) OnDidReceiveSecrets[G any](h func(context.Context, G) error) {
 func (c *Client) Run(ctx context.Context) error {
 	ctx, stop := signal.NotifyContext(ctx, shutdownSignals()...)
 	defer stop()
+	c.setRunCtx(ctx)
+	defer func() {
+		_ = c.Close()
+		c.workers.Wait()
+	}()
 
 	addr := c.dialURL
 	if addr == "" {
@@ -194,19 +108,16 @@ func (c *Client) Run(ctx context.Context) error {
 	}()
 
 	if err := c.register(ctx); err != nil {
-		_ = c.Close()
 		return fmt.Errorf("failed to register with StreamDeck: %w", err)
 	}
 
 	select {
 	case err := <-readErr:
-		c.connected.Store(false)
 		if ctx.Err() != nil {
 			return nil
 		}
 		return err
 	case <-ctx.Done():
-		_ = c.Close()
 		return nil
 	}
 }
@@ -244,19 +155,16 @@ func (c *Client) readLoop(ctx context.Context) error {
 			continue
 		}
 
-		evCtx := sdcontext.WithContext(ctx, event.Context)
-		evCtx = sdcontext.WithDevice(evCtx, event.Device)
-		evCtx = sdcontext.WithAction(evCtx, event.Action)
-		c.enqueue(evCtx, event)
+		c.enqueue(eventContext(ctx, event), event)
 	}
 }
 
 func (c *Client) send(ctx context.Context, event outgoingEvent) error {
-	if c.c == nil {
-		return ErrNotConnected
-	}
 	c.sendMu.Lock()
 	defer c.sendMu.Unlock()
+	if !c.connected.Load() || c.c == nil {
+		return ErrNotConnected
+	}
 	if err := wsjson.Write(ctx, c.c, event); err != nil {
 		return fmt.Errorf("%w: %v", ErrWriteFailed, err)
 	}
@@ -271,6 +179,13 @@ func (c *Client) sendCommand(ctx context.Context, name EventName, payload any) e
 		Device:  sdcontext.Device(ctx),
 		Payload: payload,
 	})
+}
+
+func eventContext(ctx context.Context, ev Event) context.Context {
+	if ev.Context == "" && ev.Device == "" && ev.Action == "" {
+		return ctx
+	}
+	return sdcontext.WithIDs(ctx, ev.Context, ev.Device, ev.Action)
 }
 
 func firstNonEmpty(values ...string) string {
@@ -402,7 +317,7 @@ func (c *Client) Close() error {
 	var err error
 	c.closeOnce.Do(func() {
 		c.connected.Store(false)
-		c.stopQueues()
+		c.cancelQueues()
 		if c.c != nil {
 			err = c.c.Close(websocket.StatusNormalClosure, "")
 		}
